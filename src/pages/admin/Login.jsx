@@ -34,7 +34,7 @@ export default function Login() {
   }
 
   return (
-    <div className="login-page">
+    <div className="login-page admin-theme">
       <div className="login-glow" />
       <div className="login-card slide-up">
         <div className="login-logo" style={{ color: 'var(--accent)' }}><FiCoffee size={48} /></div>
