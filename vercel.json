@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/webhook/:path*",
+      "destination": "https://agrobot-n8n.fyi4ak.easypanel.host/webhook/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

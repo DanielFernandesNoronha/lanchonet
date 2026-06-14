@@ -1,0 +1,109 @@
+.checkout-page {
+  min-height: 100vh;
+  padding-bottom: 40px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.checkout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.checkout-header h2 { font-size: 1.1rem; font-weight: 700; }
+
+.checkout-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-top: 16px;
+}
+.section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.checkout-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.checkout-item:last-child { border-bottom: none; }
+.checkout-item-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.checkout-item-name { font-weight: 600; }
+.checkout-item-price { font-weight: 700; color: var(--accent); }
+.checkout-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 520px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .input-group { grid-column: auto !important; }
+}
+
+.checkout-summary {
+  background: var(--bg-card);
+}
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+.summary-total {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 12px;
+  color: var(--text-primary);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.pix-container {
+  text-align: center;
+  padding: 40px 20px;
+  margin-top: 40px;
+}
+.pix-icon { font-size: 3rem; margin-bottom: 16px; }
+.pix-container h2 { font-size: 1.5rem; margin-bottom: 8px; }
+.pix-subtitle { color: var(--text-secondary); margin-bottom: 24px; }
+.pix-qr {
+  width: 240px;
+  height: 240px;
+  border-radius: var(--radius-lg);
+  margin: 0 auto 24px;
+  display: block;
+  background: white;
+  padding: 12px;
+}
+.pix-total {
+  margin-top: 20px;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+.pix-total strong { color: var(--accent); }
