@@ -195,7 +195,8 @@ export default function Checkout() {
       }).select().single();
 
       if (errPedido) {
-        toast.error('Erro ao registrar pedido.');
+        console.error('Supabase errPedido:', errPedido);
+        toast.error(`Erro ao registrar pedido: ${errPedido.message || errPedido.details || JSON.stringify(errPedido)}`);
         setEnviando(false);
         return;
       }
