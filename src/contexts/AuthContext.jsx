@@ -33,6 +33,16 @@ export function AuthProvider({ children }) {
       
     if (data) {
       setLojista(data);
+      if (data.nome) document.title = `${data.nome} | Painel`;
+      if (data.logo_url) {
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+        }
+        link.href = data.logo_url;
+      }
     }
     setLoading(false);
   }

@@ -50,6 +50,19 @@ export default function Checkout() {
       if (loj) {
         setLojistaId(loj.id);
         setLojistaObj(loj);
+        
+        // Atualiza o título da aba e o favicon
+        if (loj.nome) document.title = `Checkout | ${loj.nome}`;
+        if (loj.logo_url) {
+          let link = document.querySelector("link[rel~='icon']");
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = 'icon';
+            document.head.appendChild(link);
+          }
+          link.href = loj.logo_url;
+        }
+
         const { data: b } = await supabase.from('taxas_entrega').select('*').eq('lojista_id', loj.id);
         setBairros(b || []);
       }

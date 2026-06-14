@@ -27,6 +27,18 @@ export default function Cardapio() {
       const { data: loj } = await supabase.from('lojistas').select('*').eq('slug', slug).single();
       if (!loj) { toast.error('Restaurante não encontrado'); return; }
       setLojista(loj);
+      
+      // Atualiza o título da aba e o favicon
+      if (loj.nome) document.title = loj.nome;
+      if (loj.logo_url) {
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+        }
+        link.href = loj.logo_url;
+      }
 
       const { data: cats } = await supabase.from('categorias').select('*').eq('lojista_id', loj.id).order('ordem');
       setCategorias(cats || []);
