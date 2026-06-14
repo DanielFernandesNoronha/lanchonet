@@ -1,4 +1,4 @@
-const N8N_BASE = import.meta.env.VITE_N8N_BASE_URL;
+const N8N_BASE = import.meta.env.VITE_N8N_BASE_URL || '/webhook';
 
 export async function criarCobranca(lojistaId, carrinho, clienteDados) {
   const res = await fetch(`${N8N_BASE}/checkout`, {
