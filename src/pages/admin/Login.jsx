@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiMail, FiLock, FiUser, FiLink } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser, FiLink, FiCoffee } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import './Login.css';
 
@@ -37,7 +37,7 @@ export default function Login() {
     <div className="login-page">
       <div className="login-glow" />
       <div className="login-card slide-up">
-        <div className="login-logo">🍔</div>
+        <div className="login-logo" style={{ color: 'var(--accent)' }}><FiCoffee size={48} /></div>
         <h1 className="login-title">LanchoNet</h1>
         <p className="login-subtitle">Painel do Restaurante</p>
 
