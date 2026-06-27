@@ -105,7 +105,12 @@ export default function Pedidos() {
   async function avancarStatus(pedido) {
     const idx = STATUS_ORDER.indexOf(pedido.status);
     if (idx >= STATUS_ORDER.length - 1) return;
-    const novoStatus = STATUS_ORDER[idx + 1];
+    
+    let novoStatus = STATUS_ORDER[idx + 1];
+    const tipoPedido = pedido.cliente_dados?.tipo_pedido || 'ENTREGA';
+    if (pedido.status === 'preparando' && tipoPedido === 'RETIRADA') {
+      novoStatus = 'concluido';
+    }
 
     const { error } = await supabase.from('pedidos').update({ status: novoStatus }).eq('id', pedido.id);
     if (error) return toast.error('Erro ao atualizar');
