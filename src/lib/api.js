@@ -31,3 +31,13 @@ export async function verificarStatusWhatsApp(lojistaId) {
   });
   return res.json();
 }
+
+export async function desconectarWhatsApp(lojistaId) {
+  const res = await fetch(`${N8N_BASE}/whatsapp-logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lojista_id: lojistaId }),
+  });
+  return res.json();
+}
+

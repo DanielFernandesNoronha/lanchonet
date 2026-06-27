@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { verificarStatusWhatsApp, obterQRCodeWhatsApp } from '../../lib/api';
+import { verificarStatusWhatsApp, obterQRCodeWhatsApp, desconectarWhatsApp } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
-import { FiSmartphone, FiCheckCircle, FiRefreshCw, FiMessageCircle, FiSave } from 'react-icons/fi';
+import { FiSmartphone, FiCheckCircle, FiRefreshCw, FiMessageCircle, FiSave, FiLogOut } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import './WhatsApp.css';
 
@@ -105,6 +105,23 @@ export default function WhatsApp() {
     }
   }
 
+  async function handleDesconectar() {
+    if (!lojista) return;
+    const confirm = window.confirm("Deseja realmente desconectar o WhatsApp?");
+    if (!confirm) return;
+    
+    setStatus('loading');
+    try {
+      await desconectarWhatsApp(lojista.id);
+      toast.success('WhatsApp desconectado com sucesso!');
+      setStatus('disconnected');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao desconectar.');
+      setStatus('connected');
+    }
+  }
+
   return (
     <div className="whatsapp-page">
       <h1 className="page-title">WhatsApp</h1>
@@ -122,7 +139,10 @@ export default function WhatsApp() {
             <FiCheckCircle size={48} color="var(--green)" />
             <h2>WhatsApp Conectado e Operante!</h2>
             <p className="wpp-subtitle">🟢 Seu robô de mensagens e notificações está pronto.</p>
-            <button className="btn btn-secondary" onClick={checkStatus}><FiRefreshCw /> Verificar novamente</button>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button className="btn btn-secondary" onClick={checkStatus}><FiRefreshCw /> Verificar novamente</button>
+              <button className="btn btn-danger" onClick={handleDesconectar}><FiLogOut /> Desconectar Bot</button>
+            </div>
             
             <hr className="wpp-divider" />
             
