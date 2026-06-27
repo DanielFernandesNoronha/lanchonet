@@ -125,21 +125,25 @@ export default function WhatsApp() {
   return (
     <div className="whatsapp-page">
       <h1 className="page-title">WhatsApp</h1>
-
+ 
       <div className="whatsapp-card card">
         {status === 'checking' && (
           <div className="wpp-status-center">
-            <FiRefreshCw className="spin" size={32} />
-            <p>Verificando conexão...</p>
+            <FiRefreshCw className="spin" size={32} color="var(--accent)" />
+            <p style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Verificando conexão...</p>
           </div>
         )}
-
+ 
         {status === 'connected' && (
-          <div className="wpp-status-center wpp-connected slide-up">
-            <FiCheckCircle size={48} color="var(--green)" />
-            <h2>WhatsApp Conectado e Operante!</h2>
-            <p className="wpp-subtitle">🟢 Seu robô de mensagens e notificações está pronto.</p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          <div className="wpp-status-center slide-up">
+            <div className="wpp-status-icon-wrapper">
+              <FiCheckCircle size={40} />
+            </div>
+            <div>
+              <h2 className="wpp-status-title">WhatsApp Conectado</h2>
+              <p className="wpp-subtitle">Seu robô de mensagens e notificações está pronto e operante.</p>
+            </div>
+            <div className="wpp-actions-row">
               <button className="btn btn-secondary" onClick={checkStatus}><FiRefreshCw /> Verificar novamente</button>
               <button className="btn btn-danger" onClick={handleDesconectar}><FiLogOut /> Desconectar Bot</button>
             </div>
@@ -147,31 +151,36 @@ export default function WhatsApp() {
             <hr className="wpp-divider" />
             
             <div className="wpp-autoresponder">
-              <h3><FiMessageCircle /> Mensagem Automática</h3>
-              <p>Envie uma mensagem automática sempre que um cliente chamar no seu WhatsApp.</p>
+              <div className="wpp-autoresponder-header">
+                <FiMessageCircle size={20} />
+                <h3 className="wpp-autoresponder-title">Mensagem Automática</h3>
+              </div>
+              <p className="wpp-autoresponder-desc">Envie uma mensagem de boas-vindas ou ausência de forma automática sempre que um cliente iniciar uma conversa no seu WhatsApp.</p>
               
-              <div className="form-group wpp-toggle-group">
-                <label className="toggle-switch">
+              <div className="wpp-toggle-container">
+                <label className="wpp-toggle-switch">
                   <input 
                     type="checkbox" 
                     checked={autoResponderEnabled} 
                     onChange={e => setAutoResponderEnabled(e.target.checked)} 
                   />
-                  <span className="slider round"></span>
+                  <span className="wpp-toggle-slider"></span>
                 </label>
-                <span>{autoResponderEnabled ? 'Robô Ligado' : 'Robô Desligado'}</span>
+                <span className="wpp-toggle-label">
+                  {autoResponderEnabled ? 'Robô Ativo' : 'Robô Inativo'}
+                </span>
               </div>
 
               {autoResponderEnabled && (
-                <div className="form-group slide-down">
-                  <label>Sua Mensagem de Boas Vindas/Ausência</label>
+                <div className="wpp-form-group slide-down">
+                  <label>Mensagem de Boas-Vindas / Ausência</label>
                   <textarea 
-                    className="form-control"
+                    className="wpp-textarea"
                     rows="4"
-                    placeholder="Ex: Olá! Aqui é da LanchoNet. Como podemos ajudar? Já fez o seu pedido no nosso cardápio virtual?"
+                    placeholder="Ex: Olá! Como podemos ajudar? Já fez o seu pedido no nosso cardápio virtual?"
                     value={autoResponderMessage}
                     onChange={e => setAutoResponderMessage(e.target.value)}
-                  ></textarea>
+                  />
                 </div>
               )}
 
@@ -185,26 +194,30 @@ export default function WhatsApp() {
             </div>
           </div>
         )}
-
+ 
         {status === 'disconnected' && (
           <div className="wpp-status-center slide-up">
-            <FiSmartphone size={48} color="var(--text-muted)" />
-            <h2>Conectar WhatsApp</h2>
-            <p className="wpp-subtitle">Pareie seu WhatsApp para enviar notificações automáticas de pedidos aos seus clientes.</p>
+            <div className="wpp-status-icon-wrapper disconnected">
+              <FiSmartphone size={40} />
+            </div>
+            <div>
+              <h2 className="wpp-status-title">Conectar WhatsApp</h2>
+              <p className="wpp-subtitle">Pareie seu aparelho celular para começar a enviar mensagens e notificações de pedidos de forma 100% automatizada.</p>
+            </div>
             <button className="btn btn-primary btn-lg" onClick={gerarQR}><FiSmartphone /> Gerar QR Code</button>
           </div>
         )}
-
+ 
         {status === 'loading' && (
           <div className="wpp-status-center">
-            <FiRefreshCw className="spin" size={32} />
-            <p>Gerando QR Code...</p>
+            <FiRefreshCw className="spin" size={32} color="var(--accent)" />
+            <p style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Gerando QR Code...</p>
           </div>
         )}
-
+ 
         {status === 'qr' && qrCode && (
           <div className="wpp-status-center slide-up">
-            <h2>Escaneie o QR Code</h2>
+            <h2 className="wpp-status-title">Escaneie o QR Code</h2>
             <p className="wpp-subtitle">Abra o WhatsApp no seu celular → Configurações → Aparelhos conectados → Conectar aparelho</p>
             <img src={qrCode} alt="QR Code WhatsApp" className="wpp-qr" />
             <p className="wpp-polling">⏳ Aguardando pareamento... (verificando a cada 5 segundos)</p>
