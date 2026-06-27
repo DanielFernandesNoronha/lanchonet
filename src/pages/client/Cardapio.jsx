@@ -130,25 +130,29 @@ export default function Cardapio() {
   return (
     <div className="cardapio-page" style={whiteLabelStyles}>
       {/* Header */}
-      <header className="cardapio-header" style={{ 
-        background: lojista.capa_url 
-          ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${lojista.capa_url}) center/cover no-repeat` 
-          : 'var(--bg-secondary)', 
-        borderBottom: '1px solid rgba(255,255,255,0.05)' 
-      }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <header className="cardapio-header-new">
+        <div className="header-banner" style={{ 
+          backgroundImage: lojista.capa_url ? `url(${lojista.capa_url})` : 'none',
+          backgroundColor: lojista.capa_url ? 'transparent' : 'var(--bg-secondary)'
+        }} />
+        <div className="container header-profile-container">
           {lojista.logo_url && (
-            <img src={lojista.logo_url} alt="Logo" style={{ width: 150, height: 150, objectFit: 'contain', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', flexShrink: 0 }} />
+            <img src={lojista.logo_url} alt="Logo" className="lojista-logo-new" />
           )}
-          <div className="header-info">
-            <h1 className="lojista-nome" style={{ color: lojista.capa_url ? (lojista.cor_fundo_cards || '#ffffff') : 'var(--text-primary)' }}>{lojista.nome}</h1>
-            <p className="lojista-desc" style={{ color: lojista.capa_url ? (lojista.cor_fundo_cards || '#ffffff') : 'var(--text-secondary)' }}>{lojista.descricao || 'Peça pelo nosso cardápio digital!'}</p>
+          <div className="header-info-new">
+            <div className="header-title-row">
+              <h1 className="lojista-nome-new">{lojista.nome}</h1>
+              <span className={`status-badge ${isFechado ? 'fechado' : 'aberto'}`}>
+                {isFechado ? 'Fechado' : 'Aberto'}
+              </span>
+            </div>
+            <p className="lojista-desc-new">{lojista.descricao || 'Peça pelo nosso cardápio digital!'}</p>
           </div>
         </div>
       </header>
 
       {isFechado && (
-        <div style={{ background: 'var(--red)', color: 'white', textAlign: 'center', padding: '12px', fontWeight: 'bold' }}>
+        <div style={{ background: '#ef4444', color: 'white', textAlign: 'center', padding: '12px', fontWeight: 'bold', margin: '0 auto 20px auto', maxWidth: '1200px', width: 'calc(100% - 40px)', borderRadius: '16px', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)' }}>
           Loja Fechada no momento. Os pedidos estão temporariamente pausados.
         </div>
       )}
