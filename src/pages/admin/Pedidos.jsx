@@ -637,7 +637,11 @@ export default function Pedidos() {
                     <button className="ped-btn ped-btn--secondary" onClick={iniciarEdicao}><FiEdit2 size={14}/> Editar</button>
                     {pedidoSelecionado.status !== 'concluido' && (
                       <button className="ped-btn ped-btn--primary" onClick={() => avancarStatus(pedidoSelecionado)}>
-                        <FiChevronRight size={16}/> {STATUS_LABELS[STATUS_ORDER[STATUS_ORDER.indexOf(pedidoSelecionado.status) + 1]] || 'Avançar'}
+                        <FiChevronRight size={16}/> {STATUS_LABELS[
+                          pedidoSelecionado.status === 'preparando' && (pedidoSelecionado.cliente_dados?.tipo_pedido || 'ENTREGA') === 'RETIRADA'
+                            ? 'concluido'
+                            : STATUS_ORDER[STATUS_ORDER.indexOf(pedidoSelecionado.status) + 1]
+                        ] || 'Avançar'}
                       </button>
                     )}
                   </>
