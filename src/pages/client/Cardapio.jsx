@@ -183,25 +183,84 @@ export default function Cardapio() {
         )}
 
         {/* Products */}
-        <div className="produtos-grid">
-          {produtosFiltrados.map((p, idx) => (
-            <div key={p.id} className="produto-card fade-in" style={{ animationDelay: `${idx * 0.05}s` }}>
-              {p.imagem_url && <img src={p.imagem_url} alt={p.nome} className="produto-img" />}
-              <div className="produto-info">
-                <h3 className="produto-nome">{p.nome}</h3>
-                {p.descricao && <p className="produto-desc">{p.descricao}</p>}
-                <div className="produto-footer">
-                  <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
-                  <div className="quantidade-control">
-                    <button className="btn btn-primary btn-sm" onClick={() => abrirModalProduto(p)} disabled={isFechado}>
-                      <FiPlus /> {isFechado ? 'Fechado' : 'Adicionar'}
-                    </button>
+        {catAtiva ? (
+          <div className="produtos-grid">
+            {produtosFiltrados.map((p, idx) => (
+              <div key={p.id} className="produto-card fade-in" style={{ animationDelay: `${idx * 0.05}s` }}>
+                {p.imagem_url && <img src={p.imagem_url} alt={p.nome} className="produto-img" />}
+                <div className="produto-info">
+                  <h3 className="produto-nome">{p.nome}</h3>
+                  {p.descricao && <p className="produto-desc">{p.descricao}</p>}
+                  <div className="produto-footer">
+                    <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
+                    <div className="quantidade-control">
+                      <button className="btn btn-primary btn-sm" onClick={() => abrirModalProduto(p)} disabled={isFechado}>
+                        <FiPlus /> {isFechado ? 'Fechado' : 'Adicionar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="categorias-grupos">
+            {categorias.map(c => {
+              const produtosDaCategoria = produtosFiltrados.filter(p => p.categoria_id === c.id);
+              if (produtosDaCategoria.length === 0) return null;
+              return (
+                <div key={c.id} className="categoria-secao fade-in">
+                  <h2 className="categoria-titulo-grupo">{c.nome}</h2>
+                  <div className="produtos-grid">
+                    {produtosDaCategoria.map((p, idx) => (
+                      <div key={p.id} className="produto-card" style={{ animationDelay: `${idx * 0.03}s` }}>
+                        {p.imagem_url && <img src={p.imagem_url} alt={p.nome} className="produto-img" />}
+                        <div className="produto-info">
+                          <h3 className="produto-nome">{p.nome}</h3>
+                          {p.descricao && <p className="produto-desc">{p.descricao}</p>}
+                          <div className="produto-footer">
+                            <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
+                            <div className="quantidade-control">
+                              <button className="btn btn-primary btn-sm" onClick={() => abrirModalProduto(p)} disabled={isFechado}>
+                                <FiPlus /> {isFechado ? 'Fechado' : 'Adicionar'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Products without category */}
+            {produtosFiltrados.filter(p => !categorias.some(c => c.id === p.categoria_id)).length > 0 && (
+              <div className="categoria-secao fade-in">
+                <h2 className="categoria-titulo-grupo">Outros</h2>
+                <div className="produtos-grid">
+                  {produtosFiltrados.filter(p => !categorias.some(c => c.id === p.categoria_id)).map((p, idx) => (
+                    <div key={p.id} className="produto-card">
+                      {p.imagem_url && <img src={p.imagem_url} alt={p.nome} className="produto-img" />}
+                      <div className="produto-info">
+                        <h3 className="produto-nome">{p.nome}</h3>
+                        {p.descricao && <p className="produto-desc">{p.descricao}</p>}
+                        <div className="produto-footer">
+                          <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
+                          <div className="quantidade-control">
+                            <button className="btn btn-primary btn-sm" onClick={() => abrirModalProduto(p)} disabled={isFechado}>
+                              <FiPlus /> {isFechado ? 'Fechado' : 'Adicionar'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {produtosFiltrados.length === 0 && (
           <div className="empty-state">
