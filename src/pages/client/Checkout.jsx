@@ -96,7 +96,22 @@ export default function Checkout() {
         setStep(3);
       } else {
         toast.error('Senha incorreta! Te enviamos um aviso no WhatsApp.');
-        // Here we could trigger an n8n webhook for password recovery!
+        // Enviar aviso no WhatsApp com a senha cadastrada
+        try {
+          const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
+          const textMsg = `🔐 *Aviso de Login Incorreto*\\n\\nOlá! Identificamos uma tentativa de login com senha incorreta no site.\\n\\nSua senha cadastrada é: *${cliente.senha_hash}*\\n\\nSe não foi você, por favor desconsidere.`;
+          fetch('/webhook/whatsapp-status-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lojista_id: lojistaId,
+              telefone: numeroWpp,
+              mensagem: textMsg
+            })
+          }).catch(e => console.error(e));
+        } catch (e) {
+          console.error(e);
+        }
       }
     } else {
       // Register
