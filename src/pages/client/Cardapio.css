@@ -212,6 +212,7 @@
 /* Sleek card design */
 .produto-card {
   display: flex;
+  align-items: center; /* Vertically center image and info */
   gap: 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);

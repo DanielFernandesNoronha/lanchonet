@@ -116,10 +116,23 @@ export default function Pedidos() {
 
     // WhatsApp notification
     const statusMsgs = {
-      'preparando': 'Oba! Seu pedido já está sendo preparado na cozinha!',
-      'entrega': 'Boas notícias! Seu pedido acabou de sair para entrega!',
+      'preparando': 'seu pedido já está em produção 🍳',
+      'entrega': 'Boas notícias! Seu pedido acabou de sair para entrega! 🛵',
     };
-    if (statusMsgs[novoStatus]) {
+    
+    let mensagemEnvio = '';
+    if (novoStatus === 'concluido') {
+      const tipoPedido = pedido.cliente_dados?.tipo_pedido || 'ENTREGA';
+      if (tipoPedido === 'RETIRADA') {
+        mensagemEnvio = 'seu pedido está pronto para retirada 🛍️';
+      } else {
+        mensagemEnvio = 'obrigado pela preferencia, volte sempre ❤️';
+      }
+    } else if (statusMsgs[novoStatus]) {
+      mensagemEnvio = statusMsgs[novoStatus];
+    }
+
+    if (mensagemEnvio) {
       try {
         const nome = pedido.clientes?.nome || pedido.cliente_dados?.nome || 'Cliente';
         let tel = pedido.clientes?.telefone || pedido.cliente_dados?.whatsapp || '';
@@ -129,7 +142,7 @@ export default function Pedidos() {
           await fetch('/webhook/whatsapp-status-update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lojista_id: lojista.id, telefone: tel, mensagem: `Olá, ${nome}!\n\n${statusMsgs[novoStatus]}\n\nPedido #${pedido.id.slice(0, 6)}` })
+            body: JSON.stringify({ lojista_id: lojista.id, telefone: tel, mensagem: `Olá, ${nome}!\n\n${mensagemEnvio}\n\nPedido #${pedido.id.slice(0, 6)}` })
           });
         }
       } catch (e) { console.error('WhatsApp error', e); }

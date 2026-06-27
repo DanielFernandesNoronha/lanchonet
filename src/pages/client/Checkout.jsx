@@ -226,9 +226,25 @@ export default function Checkout() {
       if (!errPedido && clienteLogado.whatsapp) {
         try {
           const numeroWpp = clienteLogado.whatsapp.length <= 11 ? `55${clienteLogado.whatsapp}` : clienteLogado.whatsapp;
-          let itensTexto = items.map(i => `${i.quantidade}x ${i.nome} (R$ ${(i.precoCalculado * i.quantidade).toFixed(2)})`).join('\\n');
+          
+          let itensTexto = items.map(i => {
+            let itemStr = `*${i.quantidade}x ${i.nome}* (R$ ${(i.precoCalculado * i.quantidade).toFixed(2)})`;
+            if (i.adicionais && i.adicionais.length > 0) {
+              itemStr += `\\n  _Adicionais: ${i.adicionais.map(a => a.nome).join(', ')}_`;
+            }
+            if (i.observacao) {
+              itemStr += `\\n  _Obs: ${i.observacao}_`;
+            }
+            return itemStr;
+          }).join('\\n\\n');
+
           const tempoEstimado = (lojistaObj.tempo_novo ?? 5) + (lojistaObj.tempo_preparando ?? 30) + (tipoPedido === 'ENTREGA' ? (lojistaObj.tempo_entrega ?? 40) : 0);
-          let textMsg = `*Novo Pedido Recebido!*\\n\\nOlá ${clienteLogado.nome || ''}! Recebemos seu pedido #${pedidoDb.id.slice(0, 6)}.\\n\\n*Itens:*\\n${itensTexto}\\n\\n*Total:* R$ ${(payload.cliente.total_final).toFixed(2)}\\n*Pagamento:* ${formaPagamento}\\n*Tempo estimado:* ~${tempoEstimado} minutos\\n\\nAguarde, logo iniciaremos o preparo!`;
+          
+          const localEntrega = tipoPedido === 'ENTREGA' 
+            ? `${endereco.rua}, ${endereco.numero}${endereco.complemento ? `, ${endereco.complemento}` : ''} - Bairro: ${bairros.find(b => b.id === endereco.bairro_id)?.bairro || ''}`
+            : 'Retirada no Balcão';
+            
+          let textMsg = `📝 *PEDIDO CONFIRMADO (#${pedidoDb.id.slice(0, 6)})*\\n----------------------------------------\\n\\n👤 *Cliente:* ${clienteLogado.nome}\\n📞 *Telefone:* ${clienteLogado.whatsapp}\\n\\n🛒 *Itens:*\\n${itensTexto}\\n\\n----------------------------------------\\n🛵 *Tipo:* ${tipoPedido === 'ENTREGA' ? 'Entrega' : 'Retirada'}\\n📍 *Endereço:* ${localEntrega}\\n💬 *Obs. Endereço:* ${tipoPedido === 'ENTREGA' && endereco.referencia ? endereco.referencia : 'Nenhuma'}\\n\\n💳 *Forma de Pagamento:* ${formaPagamento}\\n💰 *Status do Pagamento:* Pendente\\n\\n⏱️ *Previsão:* ~${tempoEstimado} minutos\\n💵 *Taxa de Entrega:* ${tipoPedido === 'ENTREGA' ? `R$ ${taxaEntrega.toFixed(2)}` : 'R$ 0.00'}\\n\\n🔥 *Total a Pagar:* *R$ ${payload.cliente.total_final.toFixed(2)}*`;
           
           await fetch('/webhook/whatsapp-status-update', {
             method: 'POST',
