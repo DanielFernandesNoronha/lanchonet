@@ -227,3 +227,85 @@
 .spin {
   animation: spin 1s linear infinite;
 }
+
+/* Dashboard Grid */
+.wpp-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 30px;
+  width: 100%;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .wpp-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wpp-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  text-align: left;
+}
+
+.wpp-panel-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Connection Info Card */
+.wpp-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--bg-card);
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+}
+
+.wpp-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.wpp-info-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.wpp-info-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.wpp-info-val {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.wpp-badge-status {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.wpp-badge-status.active {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}

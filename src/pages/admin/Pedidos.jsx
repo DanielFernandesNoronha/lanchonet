@@ -16,6 +16,8 @@ export default function Pedidos() {
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [idToDelete, setIdToDelete] = useState(null);
   const [produtos, setProdutos] = useState([]);
   const [bairros, setBairros] = useState([]);
   const [adicionaisGlobais, setAdicionaisGlobais] = useState([]);
@@ -154,12 +156,19 @@ export default function Pedidos() {
     }
   }
 
-  async function excluirPedido(id) {
-    if (!window.confirm('Tem certeza que deseja excluir este pedido?')) return;
-    const { error } = await supabase.from('pedidos').delete().eq('id', id);
+  function triggerDelete(id) {
+    setIdToDelete(id);
+    setShowConfirmModal(true);
+  }
+
+  async function excluirPedidoConfirmado() {
+    setShowConfirmModal(false);
+    if (!idToDelete) return;
+    const { error } = await supabase.from('pedidos').delete().eq('id', idToDelete);
     if (error) return toast.error('Erro ao excluir. Rode o SQL de permissão no Supabase.');
-    setPedidos(prev => prev.filter(p => p.id !== id));
-    if (pedidoSelecionado?.id === id) { setPedidoSelecionado(null); setIsEditing(false); }
+    setPedidos(prev => prev.filter(p => p.id !== idToDelete));
+    if (pedidoSelecionado?.id === idToDelete) { setPedidoSelecionado(null); setIsEditing(false); }
+    setIdToDelete(null);
     toast.success('Pedido excluído');
   }
 
@@ -633,7 +642,7 @@ export default function Pedidos() {
                   </>
                 ) : (
                   <>
-                    <button className="ped-btn ped-btn--danger" onClick={() => excluirPedido(pedidoSelecionado.id)}><FiTrash2 size={14}/> Excluir</button>
+                    <button className="ped-btn ped-btn--danger" onClick={() => triggerDelete(pedidoSelecionado.id)}><FiTrash2 size={14}/> Excluir</button>
                     <button className="ped-btn ped-btn--secondary" onClick={iniciarEdicao}><FiEdit2 size={14}/> Editar</button>
                     {pedidoSelecionado.status !== 'concluido' && (
                       <button className="ped-btn ped-btn--primary" onClick={() => avancarStatus(pedidoSelecionado)}>
@@ -651,6 +660,25 @@ export default function Pedidos() {
           </>
         )}
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="modal-overlay">
+          <div className="confirm-modal-card slide-up">
+            <div className="confirm-modal-icon danger">
+              <FiTrash2 />
+            </div>
+            <h3 className="confirm-modal-title">Excluir Pedido</h3>
+            <p className="confirm-modal-message">
+              Tem certeza que deseja excluir permanentemente este pedido? Esta ação não poderá ser revertida.
+            </p>
+            <div className="confirm-modal-actions">
+              <button className="btn btn-ghost" onClick={() => setShowConfirmModal(false)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={excluirPedidoConfirmado}>Excluir Pedido</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

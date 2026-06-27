@@ -10,6 +10,8 @@ export default function WhatsApp() {
   const { lojista } = useAuth();
   const [status, setStatus] = useState('checking'); // checking | disconnected | connected | qr
   const [qrCode, setQrCode] = useState(null);
+  const [connectionDetails, setConnectionDetails] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   
   const [autoResponderEnabled, setAutoResponderEnabled] = useState(false);
   const [autoResponderMessage, setAutoResponderMessage] = useState('');
@@ -66,14 +68,17 @@ export default function WhatsApp() {
     if (!lojista) return;
     try {
       const res = await verificarStatusWhatsApp(lojista.id);
-      if (res.connected || res.instance?.state === 'open') {
+      if (res.connected || res.instance?.state === 'open' || res.owner) {
         setStatus('connected');
+        setConnectionDetails(res);
         clearInterval(intervalRef.current);
       } else {
         setStatus('disconnected');
+        setConnectionDetails(null);
       }
     } catch {
       setStatus('disconnected');
+      setConnectionDetails(null);
     }
   }
 
@@ -89,8 +94,9 @@ export default function WhatsApp() {
         // Start polling every 5 seconds
         intervalRef.current = setInterval(async () => {
           const check = await verificarStatusWhatsApp(lojista.id);
-          if (check.connected || check.instance?.state === 'open') {
+          if (check.connected || check.instance?.state === 'open' || check.owner) {
             setStatus('connected');
+            setConnectionDetails(check);
             clearInterval(intervalRef.current);
             toast.success('WhatsApp conectado com sucesso!');
           }
@@ -105,16 +111,20 @@ export default function WhatsApp() {
     }
   }
 
-  async function handleDesconectar() {
+  function triggerDesconectar() {
+    setShowConfirmModal(true);
+  }
+
+  async function handleDesconectarConfirmado() {
+    setShowConfirmModal(false);
     if (!lojista) return;
-    const confirm = window.confirm("Deseja realmente desconectar o WhatsApp?");
-    if (!confirm) return;
     
     setStatus('loading');
     try {
       await desconectarWhatsApp(lojista.id);
       toast.success('WhatsApp desconectado com sucesso!');
       setStatus('disconnected');
+      setConnectionDetails(null);
     } catch (e) {
       console.error(e);
       toast.error('Erro ao desconectar.');
@@ -135,29 +145,50 @@ export default function WhatsApp() {
         )}
  
         {status === 'connected' && (
-          <div className="wpp-status-center slide-up">
-            <div className="wpp-status-icon-wrapper">
-              <FiCheckCircle size={40} />
-            </div>
-            <div>
-              <h2 className="wpp-status-title">WhatsApp Conectado</h2>
-              <p className="wpp-subtitle">Seu robô de mensagens e notificações está pronto e operante.</p>
-            </div>
-            <div className="wpp-actions-row">
-              <button className="btn btn-secondary" onClick={checkStatus}><FiRefreshCw /> Verificar novamente</button>
-              <button className="btn btn-danger" onClick={handleDesconectar}><FiLogOut /> Desconectar Bot</button>
+          <div className="wpp-dashboard-grid slide-up">
+            {/* Left Side: Connection Info and Analytics */}
+            <div className="wpp-panel">
+              <div className="wpp-panel-title">
+                <FiCheckCircle size={20} color="#22c55e" />
+                <span>Instância Conectada</span>
+              </div>
+              
+              <div className="wpp-info-card">
+                <div className="wpp-info-row">
+                  <span className="wpp-info-label">Nome da Conta</span>
+                  <span className="wpp-info-val">{connectionDetails?.profileName || lojista?.nome || 'Dispositivo WhatsApp'}</span>
+                </div>
+                <div className="wpp-info-row">
+                  <span className="wpp-info-label">Número Conectado</span>
+                  <span className="wpp-info-val">
+                    {connectionDetails?.owner ? `+${connectionDetails.owner.split('@')[0]}` : 'Verificando...'}
+                  </span>
+                </div>
+                <div className="wpp-info-row">
+                  <span className="wpp-info-label">Status Geral</span>
+                  <span className="wpp-badge-status active">Ativo e Operante</span>
+                </div>
+                <div className="wpp-info-row">
+                  <span className="wpp-info-label">Serviço de Notificações</span>
+                  <span className="wpp-info-val" style={{ color: '#22c55e' }}>ONLINE</span>
+                </div>
+              </div>
+
+              <div className="wpp-actions-row" style={{ marginTop: '20px', justifyContent: 'flex-start' }}>
+                <button className="btn btn-secondary btn-sm" onClick={checkStatus}><FiRefreshCw /> Atualizar</button>
+                <button className="btn btn-danger btn-sm" onClick={triggerDesconectar}><FiLogOut /> Desconectar</button>
+              </div>
             </div>
             
-            <hr className="wpp-divider" />
-            
-            <div className="wpp-autoresponder">
+            {/* Right Side: Autoresponder settings */}
+            <div className="wpp-autoresponder" style={{ background: 'var(--bg-secondary)', padding: '24px', border: '1px solid var(--border)' }}>
               <div className="wpp-autoresponder-header">
                 <FiMessageCircle size={20} />
                 <h3 className="wpp-autoresponder-title">Mensagem Automática</h3>
               </div>
-              <p className="wpp-autoresponder-desc">Envie uma mensagem de boas-vindas ou ausência de forma automática sempre que um cliente iniciar uma conversa no seu WhatsApp.</p>
+              <p className="wpp-autoresponder-desc" style={{ marginBottom: '16px' }}>Envie uma mensagem de boas-vindas automática ao iniciar conversas.</p>
               
-              <div className="wpp-toggle-container">
+              <div className="wpp-toggle-container" style={{ marginBottom: '16px', padding: '10px 14px' }}>
                 <label className="wpp-toggle-switch">
                   <input 
                     type="checkbox" 
@@ -172,12 +203,11 @@ export default function WhatsApp() {
               </div>
 
               {autoResponderEnabled && (
-                <div className="wpp-form-group slide-down">
-                  <label>Mensagem de Boas-Vindas / Ausência</label>
+                <div className="wpp-form-group" style={{ marginBottom: '16px' }}>
                   <textarea 
                     className="wpp-textarea"
-                    rows="4"
-                    placeholder="Ex: Olá! Como podemos ajudar? Já fez o seu pedido no nosso cardápio virtual?"
+                    rows="3"
+                    placeholder="Ex: Olá! Como podemos ajudar?"
                     value={autoResponderMessage}
                     onChange={e => setAutoResponderMessage(e.target.value)}
                   />
@@ -188,6 +218,7 @@ export default function WhatsApp() {
                 className="btn btn-primary wpp-save-btn" 
                 onClick={saveConfigs}
                 disabled={savingConfig}
+                style={{ padding: '10px' }}
               >
                 {savingConfig ? 'Salvando...' : <><FiSave /> Salvar Configurações</>}
               </button>
@@ -224,6 +255,25 @@ export default function WhatsApp() {
           </div>
         )}
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="modal-overlay">
+          <div className="confirm-modal-card slide-up">
+            <div className="confirm-modal-icon danger">
+              <FiLogOut />
+            </div>
+            <h3 className="confirm-modal-title">Desconectar WhatsApp</h3>
+            <p className="confirm-modal-message">
+              Tem certeza que deseja desconectar o robô do seu WhatsApp? Você deixará de enviar notificações automáticas de status de pedidos para seus clientes.
+            </p>
+            <div className="confirm-modal-actions">
+              <button className="btn btn-ghost" onClick={() => setShowConfirmModal(false)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={handleDesconectarConfirmado}>Confirmar Desconexão</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

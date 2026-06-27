@@ -14,6 +14,8 @@ export default function Produtos() {
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState({ nome: '', preco: '', categoria_id: '', descricao: '', disponivel: true, adicionais: [] });
   const [uploading, setUploading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [idToDelete, setIdToDelete] = useState(null);
 
   useEffect(() => {
     if (!lojista) return;
@@ -110,10 +112,17 @@ export default function Produtos() {
     loadData();
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Remover produto?')) return;
-    await supabase.from('produtos').delete().eq('id', id);
-    toast.success('Removido!');
+  function triggerDelete(id) {
+    setIdToDelete(id);
+    setShowConfirmModal(true);
+  }
+
+  async function handleDeleteConfirmado() {
+    setShowConfirmModal(false);
+    if (!idToDelete) return;
+    await supabase.from('produtos').delete().eq('id', idToDelete);
+    toast.success('Produto removido com sucesso!');
+    setIdToDelete(null);
     loadData();
   }
 
@@ -163,7 +172,7 @@ export default function Produtos() {
                 <td>
                   <div className="action-btns">
                     <button className="btn btn-ghost btn-sm" onClick={() => abrirModal(p)}><FiEdit2 /></button>
-                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => handleDelete(p.id)}><FiTrash2 /></button>
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => triggerDelete(p.id)}><FiTrash2 /></button>
                   </div>
                 </td>
               </tr>
@@ -222,6 +231,24 @@ export default function Produtos() {
                 <button type="submit" className="btn btn-primary">Salvar</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Custom Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="modal-overlay">
+          <div className="confirm-modal-card slide-up">
+            <div className="confirm-modal-icon danger">
+              <FiTrash2 />
+            </div>
+            <h3 className="confirm-modal-title">Excluir Produto</h3>
+            <p className="confirm-modal-message">
+              Tem certeza que deseja remover este produto do seu cardápio? Esta ação não pode ser desfeita.
+            </p>
+            <div className="confirm-modal-actions">
+              <button className="btn btn-ghost" onClick={() => setShowConfirmModal(false)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={handleDeleteConfirmado}>Excluir Produto</button>
+            </div>
           </div>
         </div>
       )}
