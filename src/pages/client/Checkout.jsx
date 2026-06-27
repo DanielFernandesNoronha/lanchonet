@@ -23,6 +23,8 @@ export default function Checkout() {
   // Auth state
   const [whatsapp, setWhatsapp] = useState('');
   const [senha, setSenha] = useState('');
+  const [nome, setNome] = useState('');
+  const [isNovoCadastro, setIsNovoCadastro] = useState(false);
   const [clienteLogado, setClienteLogado] = useState(null);
   
   // Address state
@@ -70,9 +72,26 @@ export default function Checkout() {
     loadLojista();
   }, [slug]);
 
+  useEffect(() => {
+    if (whatsapp.length >= 10 && lojistaId) {
+      const checkSeExiste = async () => {
+        const { data } = await supabase.from('clientes')
+          .select('id')
+          .eq('lojista_id', lojistaId)
+          .eq('whatsapp', whatsapp)
+          .maybeSingle();
+        setIsNovoCadastro(!data);
+      };
+      checkSeExiste();
+    } else {
+      setIsNovoCadastro(false);
+    }
+  }, [whatsapp, lojistaId]);
+
   // Auth Functions
   async function handleLogin() {
     if (!whatsapp || !senha) return toast.error('Preencha WhatsApp e senha');
+    if (isNovoCadastro && !nome) return toast.error('Por favor, informe seu nome');
     setEnviando(true);
     
     // Check if client exists
@@ -122,7 +141,7 @@ Se não foi você, por favor desconsidere.`;
     } else {
       // Register
       const { data: novoCli, error } = await supabase.from('clientes')
-        .insert({ lojista_id: lojistaId, whatsapp, senha_hash: senha })
+        .insert({ lojista_id: lojistaId, whatsapp, senha_hash: senha, nome: nome })
         .select('*')
         .single();
       
@@ -442,6 +461,12 @@ ${itensTexto}
                     <label>WhatsApp (DDD + Número)</label>
                     <input className="input" placeholder="Ex: 11999999999" value={whatsapp} onChange={e => setWhatsapp(e.target.value.replace(/\D/g, ''))} />
                   </div>
+                  {isNovoCadastro && (
+                    <div className="input-group">
+                      <label>Nome Completo</label>
+                      <input className="input" placeholder="Ex: João Silva" value={nome} onChange={e => setNome(e.target.value)} />
+                    </div>
+                  )}
                   <div className="input-group">
                     <label>Senha</label>
                     <input className="input" type="password" placeholder="Sua senha" value={senha} onChange={e => setSenha(e.target.value)} />
