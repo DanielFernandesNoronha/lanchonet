@@ -147,13 +147,12 @@ export default function WhatsApp() {
         {status === 'connected' && (
           <div className="wpp-dashboard-grid slide-up">
             {/* Left Side: Connection Info and Analytics */}
-            <div className="wpp-panel">
-              <div className="wpp-panel-title">
-                <FiCheckCircle size={20} color="#22c55e" />
-                <span>Instância Conectada</span>
-              </div>
+            <div className="wpp-section">
+              <h4 className="wpp-section-title">
+                <FiCheckCircle size={14} color="#22c55e" /> Instância Conectada
+              </h4>
               
-              <div className="wpp-info-card">
+              <div className="wpp-info-list">
                 <div className="wpp-info-row">
                   <span className="wpp-info-label">Nome da Conta</span>
                   <span className="wpp-info-val">{connectionDetails?.profileName || lojista?.nome || 'Dispositivo WhatsApp'}</span>
@@ -174,21 +173,20 @@ export default function WhatsApp() {
                 </div>
               </div>
 
-              <div className="wpp-actions-row" style={{ marginTop: '20px', justifyContent: 'flex-start' }}>
+              <div className="wpp-actions-row">
                 <button className="btn btn-secondary btn-sm" onClick={checkStatus}><FiRefreshCw /> Atualizar</button>
                 <button className="btn btn-danger btn-sm" onClick={triggerDesconectar}><FiLogOut /> Desconectar</button>
               </div>
             </div>
             
             {/* Right Side: Autoresponder settings */}
-            <div className="wpp-autoresponder" style={{ background: 'var(--bg-secondary)', padding: '24px', border: '1px solid var(--border)' }}>
-              <div className="wpp-autoresponder-header">
-                <FiMessageCircle size={20} />
-                <h3 className="wpp-autoresponder-title">Mensagem Automática</h3>
-              </div>
-              <p className="wpp-autoresponder-desc" style={{ marginBottom: '16px' }}>Envie uma mensagem de boas-vindas automática ao iniciar conversas.</p>
+            <div className="wpp-section">
+              <h4 className="wpp-section-title">
+                <FiMessageCircle size={14} /> Mensagem Automática
+              </h4>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Envie uma mensagem de boas-vindas automática ao iniciar conversas.</p>
               
-              <div className="wpp-toggle-container" style={{ marginBottom: '16px', padding: '10px 14px' }}>
+              <div className="wpp-toggle-container">
                 <label className="wpp-toggle-switch">
                   <input 
                     type="checkbox" 
@@ -203,13 +201,15 @@ export default function WhatsApp() {
               </div>
 
               {autoResponderEnabled && (
-                <div className="wpp-form-group" style={{ marginBottom: '16px' }}>
+                <div className="input-group">
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Sua Mensagem de Boas Vindas/Ausência</label>
                   <textarea 
-                    className="wpp-textarea"
-                    rows="3"
+                    className="input"
+                    rows="4"
                     placeholder="Ex: Olá! Como podemos ajudar?"
                     value={autoResponderMessage}
                     onChange={e => setAutoResponderMessage(e.target.value)}
+                    style={{ minHeight: '110px', resize: 'vertical' }}
                   />
                 </div>
               )}
@@ -218,7 +218,6 @@ export default function WhatsApp() {
                 className="btn btn-primary wpp-save-btn" 
                 onClick={saveConfigs}
                 disabled={savingConfig}
-                style={{ padding: '10px' }}
               >
                 {savingConfig ? 'Salvando...' : <><FiSave /> Salvar Configurações</>}
               </button>

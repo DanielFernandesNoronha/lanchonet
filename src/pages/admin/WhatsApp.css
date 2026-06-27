@@ -1,12 +1,12 @@
 /* Wpp Page Styles */
 .whatsapp-page {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
 .whatsapp-card {
   padding: 40px;
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   background: var(--bg-card);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
@@ -20,92 +20,92 @@
   gap: 24px;
 }
 
-.wpp-status-icon-wrapper {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
+/* Dashboard Grid matching settings */
+.wpp-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  width: 100%;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .wpp-dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+/* Panel Sections */
+.wpp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.wpp-section-title {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+}
+
+/* Info List */
+.wpp-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wpp-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.wpp-info-row:last-child {
+  border-bottom: none;
+}
+
+.wpp-info-label {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.wpp-info-val {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.wpp-badge-status {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.wpp-badge-status.active {
   background: rgba(34, 197, 94, 0.1);
   color: #22c55e;
 }
 
-.wpp-status-icon-wrapper.disconnected {
-  background: rgba(148, 163, 184, 0.1);
-  color: var(--text-secondary);
-}
-
-.wpp-status-title {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.wpp-subtitle {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  max-width: 480px;
-  line-height: 1.5;
-}
-
-.wpp-actions-row {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.wpp-divider {
-  width: 100%;
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: 16px 0;
-}
-
-/* Autoresponder Panel */
-.wpp-autoresponder {
-  width: 100%;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  padding: 30px;
-  border-radius: 20px;
-  text-align: left;
-}
-
-.wpp-autoresponder-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  color: var(--text-primary);
-}
-
-.wpp-autoresponder-title {
-  font-size: 1.2rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.wpp-autoresponder-desc {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 24px;
-  line-height: 1.5;
-}
-
-/* Custom Toggle Switch */
+/* Custom Toggle Switch matching settings style */
 .wpp-toggle-container {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-  background: var(--bg-card);
-  padding: 14px 20px;
-  border-radius: 14px;
+  background: var(--bg-secondary);
+  padding: 12px 16px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   width: fit-content;
 }
@@ -113,8 +113,8 @@
 .wpp-toggle-switch {
   position: relative;
   display: inline-block;
-  width: 48px;
-  height: 26px;
+  width: 46px;
+  height: 24px;
 }
 
 .wpp-toggle-switch input {
@@ -131,21 +131,21 @@
   right: 0;
   bottom: 0;
   background-color: var(--text-muted);
-  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 34px;
+  transition: 0.3s;
+  border-radius: 24px;
 }
 
 .wpp-toggle-slider:before {
   position: absolute;
   content: "";
-  height: 18px;
-  width: 18px;
+  height: 16px;
+  width: 16px;
   left: 4px;
   bottom: 4px;
   background-color: white;
-  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: 0.3s;
   border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .wpp-toggle-switch input:checked + .wpp-toggle-slider {
@@ -162,46 +162,10 @@
   color: var(--text-primary);
 }
 
-/* Form Styles */
-.wpp-form-group {
+.wpp-actions-row {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
-.wpp-form-group label {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.wpp-textarea {
-  width: 100%;
-  min-height: 100px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  resize: vertical;
-  transition: all var(--transition);
-}
-
-.wpp-textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
-}
-
-.wpp-save-btn {
-  width: 100%;
-  padding: 14px;
-  font-weight: 700;
-  border-radius: 14px;
+  gap: 12px;
+  margin-top: 10px;
 }
 
 .wpp-qr {
@@ -226,86 +190,4 @@
 
 .spin {
   animation: spin 1s linear infinite;
-}
-
-/* Dashboard Grid */
-.wpp-dashboard-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 30px;
-  width: 100%;
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .wpp-dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.wpp-panel {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 24px;
-  text-align: left;
-}
-
-.wpp-panel-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Connection Info Card */
-.wpp-info-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background: var(--bg-card);
-  padding: 20px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-}
-
-.wpp-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--border);
-}
-
-.wpp-info-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.wpp-info-label {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.wpp-info-val {
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.wpp-badge-status {
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.wpp-badge-status.active {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
 }
