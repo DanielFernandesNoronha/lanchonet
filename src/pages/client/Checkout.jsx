@@ -99,7 +99,13 @@ export default function Checkout() {
         // Enviar aviso no WhatsApp com a senha cadastrada
         try {
           const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
-          const textMsg = `🔐 *Aviso de Login Incorreto*\\n\\nOlá! Identificamos uma tentativa de login com senha incorreta no site.\\n\\nSua senha cadastrada é: *${cliente.senha_hash}*\\n\\nSe não foi você, por favor desconsidere.`;
+          const textMsg = `🔐 *Aviso de Login Incorreto*
+
+Olá! Identificamos uma tentativa de login com senha incorreta no site.
+
+Sua senha cadastrada é: *${cliente.senha_hash}*
+
+Se não foi você, por favor desconsidere.`;
           fetch('/webhook/whatsapp-status-update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -245,13 +251,13 @@ export default function Checkout() {
           let itensTexto = items.map(i => {
             let itemStr = `*${i.quantidade}x ${i.nome}* (R$ ${(i.precoCalculado * i.quantidade).toFixed(2)})`;
             if (i.adicionais && i.adicionais.length > 0) {
-              itemStr += `\\n  _Adicionais: ${i.adicionais.map(a => a.nome).join(', ')}_`;
+              itemStr += `\n  _Adicionais: ${i.adicionais.map(a => a.nome).join(', ')}_`;
             }
             if (i.observacao) {
-              itemStr += `\\n  _Obs: ${i.observacao}_`;
+              itemStr += `\n  _Obs: ${i.observacao}_`;
             }
             return itemStr;
-          }).join('\\n\\n');
+          }).join('\n\n');
 
           const tempoEstimado = (lojistaObj.tempo_novo ?? 5) + (lojistaObj.tempo_preparando ?? 30) + (tipoPedido === 'ENTREGA' ? (lojistaObj.tempo_entrega ?? 40) : 0);
           
@@ -259,7 +265,27 @@ export default function Checkout() {
             ? `${endereco.rua}, ${endereco.numero}${endereco.complemento ? `, ${endereco.complemento}` : ''} - Bairro: ${bairros.find(b => b.id === endereco.bairro_id)?.bairro || ''}`
             : 'Retirada no Balcão';
             
-          let textMsg = `📝 *PEDIDO CONFIRMADO (#${pedidoDb.id.slice(0, 6)})*\\n----------------------------------------\\n\\n👤 *Cliente:* ${clienteLogado.nome}\\n📞 *Telefone:* ${clienteLogado.whatsapp}\\n\\n🛒 *Itens:*\\n${itensTexto}\\n\\n----------------------------------------\\n🛵 *Tipo:* ${tipoPedido === 'ENTREGA' ? 'Entrega' : 'Retirada'}\\n📍 *Endereço:* ${localEntrega}\\n💬 *Obs. Endereço:* ${tipoPedido === 'ENTREGA' && endereco.referencia ? endereco.referencia : 'Nenhuma'}\\n\\n💳 *Forma de Pagamento:* ${formaPagamento}\\n💰 *Status do Pagamento:* Pendente\\n\\n⏱️ *Previsão:* ~${tempoEstimado} minutos\\n💵 *Taxa de Entrega:* ${tipoPedido === 'ENTREGA' ? `R$ ${taxaEntrega.toFixed(2)}` : 'R$ 0.00'}\\n\\n🔥 *Total a Pagar:* *R$ ${payload.cliente.total_final.toFixed(2)}*`;
+          let textMsg = `📝 *PEDIDO CONFIRMADO (#${pedidoDb.id.slice(0, 6)})*
+----------------------------------------
+
+👤 *Cliente:* ${clienteLogado.nome}
+📞 *Telefone:* ${clienteLogado.whatsapp}
+
+🛒 *Itens:*
+${itensTexto}
+
+----------------------------------------
+🛵 *Tipo:* ${tipoPedido === 'ENTREGA' ? 'Entrega' : 'Retirada'}
+📍 *Endereço:* ${localEntrega}
+💬 *Obs. Endereço:* ${tipoPedido === 'ENTREGA' && endereco.referencia ? endereco.referencia : 'Nenhuma'}
+
+💳 *Forma de Pagamento:* ${formaPagamento}
+💰 *Status do Pagamento:* Pendente
+
+⏱️ *Previsão:* ~${tempoEstimado} minutos
+💵 *Taxa de Entrega:* ${tipoPedido === 'ENTREGA' ? `R$ ${taxaEntrega.toFixed(2)}` : 'R$ 0.00'}
+
+🔥 *Total a Pagar:* *R$ ${payload.cliente.total_final.toFixed(2)}*`;
           
           await fetch('/webhook/whatsapp-status-update', {
             method: 'POST',
