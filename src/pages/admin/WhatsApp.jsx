@@ -68,7 +68,7 @@ export default function WhatsApp() {
     if (!lojista) return;
     try {
       const res = await verificarStatusWhatsApp(lojista.id);
-      if (res.connected || res.instance?.state === 'open' || res.owner) {
+      if (res.connected) {
         setStatus('connected');
         setConnectionDetails(res);
         clearInterval(intervalRef.current);
@@ -94,7 +94,7 @@ export default function WhatsApp() {
         // Start polling every 5 seconds
         intervalRef.current = setInterval(async () => {
           const check = await verificarStatusWhatsApp(lojista.id);
-          if (check.connected || check.instance?.state === 'open' || check.owner) {
+          if (check.connected) {
             setStatus('connected');
             setConnectionDetails(check);
             clearInterval(intervalRef.current);
