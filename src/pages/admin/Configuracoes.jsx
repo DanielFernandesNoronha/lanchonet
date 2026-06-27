@@ -143,7 +143,7 @@ export default function Configuracoes() {
   }
 
   return (
-    <div style={{ maxWidth: 600 }}>
+    <div style={{ maxWidth: 1000 }}>
       <h1 className="page-title">Configurações</h1>
 
       {/* Perfil */}

@@ -130,11 +130,10 @@ export default function Cardapio() {
   return (
     <div className="cardapio-page" style={whiteLabelStyles}>
       {/* Header */}
-      <header className="cardapio-header-new">
-        <div className="header-banner" style={{ 
-          backgroundImage: lojista.capa_url ? `url(${lojista.capa_url})` : 'none',
-          backgroundColor: lojista.capa_url ? 'transparent' : 'var(--bg-secondary)'
-        }} />
+      <header className="cardapio-header-new" style={{ 
+        backgroundImage: lojista.capa_url ? `url(${lojista.capa_url})` : 'none',
+        backgroundColor: lojista.capa_url ? 'transparent' : 'var(--bg-secondary)'
+      }}>
         <div className="container header-profile-container">
           {lojista.logo_url && (
             <img src={lojista.logo_url} alt="Logo" className="lojista-logo-new" />
