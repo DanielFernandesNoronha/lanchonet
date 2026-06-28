@@ -64,10 +64,21 @@ export default function Cardapio() {
   }, [slug]);
 
   const produtosFiltrados = produtos.filter(p => {
-    const matchFiltro = p.nome.toLowerCase().includes(filtro.toLowerCase());
-    const matchCat = !catAtiva || p.categoria_id === catAtiva;
-    return matchFiltro && matchCat;
+    return p.nome.toLowerCase().includes(filtro.toLowerCase());
   });
+
+  const scrollToCategory = (id) => {
+    setCatAtiva(id);
+    if (!id) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const element = document.getElementById(`cat-${id}`);
+    if (element) {
+      const y = element.getBoundingClientRect().top + window.scrollY - 130;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   const abrirModalProduto = (produto) => {
     setProdutoModal(produto);
@@ -112,9 +123,14 @@ export default function Cardapio() {
   const isFechado = lojista.aberto === false;
 
   const whiteLabelStyles = lojista ? {
+    '--bg-primary': lojista.cor_secundaria || '#f8fafc',
+    '--bg-card': lojista.cor_fundo_cards || '#ffffff',
     '--header-bg': lojista.cor_secundaria || '#111827',
     '--primary': lojista.cor_principal || '#f97316',
     '--accent': lojista.cor_principal || '#f97316',
+    '--text-primary': lojista.cor_texto_normal || '#0f172a',
+    '--text-secondary': lojista.cor_texto_secundaria || '#64748b',
+    '--border': 'rgba(128, 128, 128, 0.2)',
   } : {};
 
   return (
@@ -168,50 +184,87 @@ export default function Cardapio() {
           </div>
 
           {/* Categories */}
-          {categorias.length > 0 && (
-            <div className="categorias-scroll">
-              <button className={`cat-chip ${!catAtiva ? 'active' : ''}`} onClick={() => setCatAtiva(null)}>Todos</button>
-              {categorias.map(c => (
-                <button key={c.id} className={`cat-chip ${catAtiva === c.id ? 'active' : ''}`} onClick={() => setCatAtiva(c.id)}>
-                  {c.nome}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="container">
-
-        {/* Products Grid */}
-        <div className="produtos-grid">
-          {produtosFiltrados.map((p, idx) => (
-            <div 
-              key={p.id} 
-              className="produto-card fade-in" 
-              style={{ animationDelay: `${idx * 0.03}s` }}
-              onClick={() => {
-                if (!isFechado) abrirModalProduto(p);
-              }}
-            >
-              {p.imagem_url ? (
-                <img src={p.imagem_url} alt={p.nome} className="produto-img" />
-              ) : (
-                <div className="produto-img-placeholder" />
-              )}
-              <div className="produto-info">
-                <h3 className="produto-nome">{p.nome}</h3>
-                {p.descricao && <p className="produto-desc">{p.descricao}</p>}
-                <div className="produto-footer">
-                  <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
-                  <button className={`btn-add-subtle ${isFechado ? 'disabled' : ''}`}>
-                    <FiPlus size={18} />
+          {categorias.length > 0 && <div className="categorias-scroll">
+                <button className={`cat-chip ${!catAtiva ? 'active' : ''}`} onClick={() => scrollToCategory(null)}>Todos</button>
+                {categorias.map(c => (
+                  <button key={c.id} className={`cat-chip ${catAtiva === c.id ? 'active' : ''}`} onClick={() => scrollToCategory(c.id)}>
+                    {c.nome}
                   </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="container">
+          <div className="categorias-grupos">
+            {categorias.map(c => {
+              const produtosDaCategoria = produtosFiltrados.filter(p => p.categoria_id === c.id);
+              if (produtosDaCategoria.length === 0) return null;
+              return (
+                <div key={c.id} id={`cat-${c.id}`} className="categoria-secao fade-in">
+                  <h2 className="categoria-titulo-grupo">{c.nome}</h2>
+                  <div className="produtos-lista">
+                    {produtosDaCategoria.map((p, idx) => (
+                      <div 
+                        key={p.id} 
+                        className="produto-row" 
+                        onClick={() => {
+                          if (!isFechado) abrirModalProduto(p);
+                        }}
+                      >
+                        <div className="produto-row-info">
+                          <h3 className="produto-row-nome">{p.nome}</h3>
+                          {p.descricao && <p className="produto-row-desc">{p.descricao}</p>}
+                          <span className="produto-row-preco">R$ {p.preco.toFixed(2)}</span>
+                        </div>
+                        <div className="produto-row-right">
+                          {p.imagem_url ? (
+                            <img src={p.imagem_url} alt={p.nome} className="produto-row-img" />
+                          ) : (
+                            <div className="produto-row-img-placeholder" />
+                          )}
+                          {!isFechado && <div className="btn-add-mini"><FiPlus /></div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Outros (Sem categoria) */}
+            {produtosFiltrados.filter(p => !categorias.some(c => c.id === p.categoria_id)).length > 0 && (
+              <div id="cat-outros" className="categoria-secao fade-in">
+                <h2 className="categoria-titulo-grupo">Outros</h2>
+                <div className="produtos-lista">
+                  {produtosFiltrados.filter(p => !categorias.some(c => c.id === p.categoria_id)).map((p, idx) => (
+                    <div 
+                      key={p.id} 
+                      className="produto-row" 
+                      onClick={() => {
+                        if (!isFechado) abrirModalProduto(p);
+                      }}
+                    >
+                      <div className="produto-row-info">
+                        <h3 className="produto-row-nome">{p.nome}</h3>
+                        {p.descricao && <p className="produto-row-desc">{p.descricao}</p>}
+                        <span className="produto-row-preco">R$ {p.preco.toFixed(2)}</span>
+                      </div>
+                      <div className="produto-row-right">
+                        {p.imagem_url ? (
+                          <img src={p.imagem_url} alt={p.nome} className="produto-row-img" />
+                        ) : (
+                          <div className="produto-row-img-placeholder" />
+                        )}
+                        {!isFechado && <div className="btn-add-mini"><FiPlus /></div>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
 
         {produtosFiltrados.length === 0 && (
           <div className="empty-state">
