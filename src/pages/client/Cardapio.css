@@ -231,10 +231,10 @@
 }
 
 .categoria-titulo-grupo {
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   margin-left: 4px;
 }
 
