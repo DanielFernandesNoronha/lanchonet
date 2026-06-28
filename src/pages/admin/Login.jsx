@@ -38,10 +38,9 @@ export default function Login() {
     <div className="login-page admin-theme">
       <div className="login-glow" />
       <div className="login-card slide-up">
-        <div className="login-logo">
-          <img src={MenuLogo} alt="MENU Logo" style={{ height: '48px', width: 'auto' }} />
+        <div className="login-logo" style={{ marginBottom: '16px' }}>
+          <img src={MenuLogo} alt="MENU Logo" style={{ height: '72px', width: 'auto' }} />
         </div>
-        <h1 className="login-title">MENU</h1>
         <p className="login-subtitle">Painel do Restaurante</p>
 
         <form onSubmit={handleSubmit} className="login-form">

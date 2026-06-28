@@ -19,7 +19,7 @@ export default function Dashboard() {
     <div className="dashboard admin-theme">
       {/* Mobile Header */}
       <div className="mobile-header">
-        <div className="sidebar-logo"><img src={MenuLogo} alt="MENU" style={{ height: '24px' }}/> <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>MENU</span></div>
+        <div className="sidebar-logo"><img src={MenuLogo} alt="MENU" style={{ height: '28px' }}/></div>
         <button className="btn btn-ghost" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
         </button>
@@ -27,8 +27,7 @@ export default function Dashboard() {
 
       <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="sidebar-header hide-mobile">
-          <span className="sidebar-logo"><img src={MenuLogo} alt="MENU" style={{ height: '32px' }}/></span>
-          <h2 className="sidebar-title">MENU</h2>
+          <span className="sidebar-logo" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}><img src={MenuLogo} alt="MENU" style={{ height: '48px' }}/></span>
         </div>
 
         <nav className="sidebar-nav">
