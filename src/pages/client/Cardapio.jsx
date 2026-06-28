@@ -184,15 +184,16 @@ export default function Cardapio() {
           </div>
 
           {/* Categories */}
-          {categorias.length > 0 && <div className="categorias-scroll">
-                <button className={`cat-chip ${!catAtiva ? 'active' : ''}`} onClick={() => scrollToCategory(null)}>Todos</button>
-                {categorias.map(c => (
-                  <button key={c.id} className={`cat-chip ${catAtiva === c.id ? 'active' : ''}`} onClick={() => scrollToCategory(c.id)}>
-                    {c.nome}
-                  </button>
-                ))}
-              </div>
-            )}
+          {categorias.length > 0 && (
+            <div className="categorias-scroll">
+              <button className={`cat-chip ${!catAtiva ? 'active' : ''}`} onClick={() => scrollToCategory(null)}>Todos</button>
+              {categorias.map(c => (
+                <button key={c.id} className={`cat-chip ${catAtiva === c.id ? 'active' : ''}`} onClick={() => scrollToCategory(c.id)}>
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+          )}
           </div>
         </div>
 
