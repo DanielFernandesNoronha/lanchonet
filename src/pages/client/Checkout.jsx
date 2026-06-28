@@ -104,6 +104,7 @@ export default function Checkout() {
     if (cliente) {
       if (cliente.senha_hash === senha) {
         setClienteLogado(cliente);
+        localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente));
         if (cliente.endereco) {
           try {
             const endSaved = JSON.parse(cliente.endereco);
@@ -149,6 +150,7 @@ Se não foi você, por favor desconsidere.`;
         toast.error('Erro ao registrar. Você já executou o SQL no Supabase?');
       } else {
         setClienteLogado(novoCli);
+        localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(novoCli));
         toast.success('Cadastro rápido concluído!');
         setStep(3);
       }
@@ -259,7 +261,7 @@ Se não foi você, por favor desconsidere.`;
       } else {
         // Dinheiro ou Maquininha: já está salvo no DB!
         toast.success('Pedido enviado com sucesso!');
-        navigate(`/${slug}`);
+        navigate(`/${slug}/pedidos`);
       }
 
       // Enviar mensagem de comanda via n8n (se não for erro)

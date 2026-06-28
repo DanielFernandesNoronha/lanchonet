@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useCart } from '../../contexts/CartContext';
-import { FiShoppingCart, FiPlus, FiMinus, FiSearch } from 'react-icons/fi';
+import { FiShoppingCart, FiPlus, FiMinus, FiSearch, FiList, FiX, FiCheck } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import './Cardapio.css';
 
@@ -134,6 +134,12 @@ export default function Cardapio() {
         backgroundImage: lojista.capa_url ? `url(${lojista.capa_url})` : 'none',
         backgroundColor: lojista.capa_url ? 'transparent' : 'var(--bg-secondary)'
       }}>
+        <div className="header-top-actions">
+          <button className="btn-meus-pedidos" onClick={() => navigate(`/${slug}/pedidos`)}>
+            <FiList /> Meus Pedidos
+          </button>
+        </div>
+        
         <div className="container header-profile-container">
           {lojista.logo_url && (
             <img src={lojista.logo_url} alt="Logo" className="lojista-logo-new" />
@@ -156,110 +162,66 @@ export default function Cardapio() {
         </div>
       )}
 
-      <div className="container">
-        {/* Search */}
-        <div className="search-bar fade-in">
-          <FiSearch size={18} />
-          <input
-            className="input"
-            type="text"
-            placeholder="Buscar no cardápio..."
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-          />
+      {/* Sticky Nav Container for Search and Categories */}
+      <div className="sticky-nav-container fade-in">
+        <div className="container">
+          {/* Search */}
+          <div className="search-bar">
+            <FiSearch size={18} />
+            <input
+              className="input"
+              type="text"
+              placeholder="Buscar no cardápio..."
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+            />
+          </div>
+
+          {/* Categories */}
+          {categorias.length > 0 && (
+            <div className="categorias-scroll">
+              <button className={`cat-chip ${!catAtiva ? 'active' : ''}`} onClick={() => setCatAtiva(null)}>Todos</button>
+              {categorias.map(c => (
+                <button key={c.id} className={`cat-chip ${catAtiva === c.id ? 'active' : ''}`} onClick={() => setCatAtiva(c.id)}>
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Categories */}
-        {categorias.length > 0 && (
-          <div className="categorias-scroll fade-in">
-            <button className={`cat-chip ${!catAtiva ? 'active' : ''}`} onClick={() => setCatAtiva(null)}>Todos</button>
-            {categorias.map(c => (
-              <button key={c.id} className={`cat-chip ${catAtiva === c.id ? 'active' : ''}`} onClick={() => setCatAtiva(c.id)}>
-                {c.nome}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="container">
 
-        {/* Products */}
-        {catAtiva ? (
-          <div className="produtos-grid">
-            {produtosFiltrados.map((p, idx) => (
-              <div key={p.id} className="produto-card fade-in" style={{ animationDelay: `${idx * 0.05}s` }}>
-                {p.imagem_url && <img src={p.imagem_url} alt={p.nome} className="produto-img" />}
-                <div className="produto-info">
-                  <h3 className="produto-nome">{p.nome}</h3>
-                  {p.descricao && <p className="produto-desc">{p.descricao}</p>}
-                  <div className="produto-footer">
-                    <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
-                    <div className="quantidade-control">
-                      <button className="btn btn-primary btn-sm" onClick={() => abrirModalProduto(p)} disabled={isFechado}>
-                        <FiPlus /> {isFechado ? 'Fechado' : 'Adicionar'}
-                      </button>
-                    </div>
+        {/* Products Grid */}
+        <div className="produtos-grid">
+          {produtosFiltrados.map((p, idx) => (
+            <div 
+              key={p.id} 
+              className="produto-card fade-in" 
+              style={{ animationDelay: `${idx * 0.03}s` }}
+              onClick={() => {
+                if (!isFechado) abrirModalProduto(p);
+              }}
+            >
+              {p.imagem_url ? (
+                <img src={p.imagem_url} alt={p.nome} className="produto-img" />
+              ) : (
+                <div className="produto-img-placeholder" />
+              )}
+              <div className="produto-info">
+                <h3 className="produto-nome">{p.nome}</h3>
+                {p.descricao && <p className="produto-desc">{p.descricao}</p>}
+                <div className="produto-footer">
+                  <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
+                  <div className={`btn-add-pill ${isFechado ? 'disabled' : ''}`}>
+                    <FiPlus /> Adicionar
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="categorias-grupos">
-            {categorias.map(c => {
-              const produtosDaCategoria = produtosFiltrados.filter(p => p.categoria_id === c.id);
-              if (produtosDaCategoria.length === 0) return null;
-              return (
-                <div key={c.id} className="categoria-secao fade-in">
-                  <h2 className="categoria-titulo-grupo">{c.nome}</h2>
-                  <div className="produtos-grid">
-                    {produtosDaCategoria.map((p, idx) => (
-                      <div key={p.id} className="produto-card" style={{ animationDelay: `${idx * 0.03}s` }}>
-                        {p.imagem_url && <img src={p.imagem_url} alt={p.nome} className="produto-img" />}
-                        <div className="produto-info">
-                          <h3 className="produto-nome">{p.nome}</h3>
-                          {p.descricao && <p className="produto-desc">{p.descricao}</p>}
-                          <div className="produto-footer">
-                            <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
-                            <div className="quantidade-control">
-                              <button className="btn btn-primary btn-sm" onClick={() => abrirModalProduto(p)} disabled={isFechado}>
-                                <FiPlus /> {isFechado ? 'Fechado' : 'Adicionar'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-            
-            {/* Products without category */}
-            {produtosFiltrados.filter(p => !categorias.some(c => c.id === p.categoria_id)).length > 0 && (
-              <div className="categoria-secao fade-in">
-                <h2 className="categoria-titulo-grupo">Outros</h2>
-                <div className="produtos-grid">
-                  {produtosFiltrados.filter(p => !categorias.some(c => c.id === p.categoria_id)).map((p, idx) => (
-                    <div key={p.id} className="produto-card">
-                      {p.imagem_url && <img src={p.imagem_url} alt={p.nome} className="produto-img" />}
-                      <div className="produto-info">
-                        <h3 className="produto-nome">{p.nome}</h3>
-                        {p.descricao && <p className="produto-desc">{p.descricao}</p>}
-                        <div className="produto-footer">
-                          <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
-                          <div className="quantidade-control">
-                            <button className="btn btn-primary btn-sm" onClick={() => abrirModalProduto(p)} disabled={isFechado}>
-                              <FiPlus /> {isFechado ? 'Fechado' : 'Adicionar'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
 
         {produtosFiltrados.length === 0 && (
           <div className="empty-state">
@@ -272,72 +234,76 @@ export default function Cardapio() {
       {totalItems > 0 && (
         <div className="cart-float" onClick={() => navigate(`/${slug}/checkout`)}>
           <div className="cart-float-left">
-            <FiShoppingCart size={20} />
-            <span className="cart-badge">{totalItems}</span>
+            <div className="cart-icon-wrapper">
+              <FiShoppingCart size={18} />
+              <span className="cart-badge">{totalItems}</span>
+            </div>
+            <span className="cart-text">Ver carrinho</span>
           </div>
-          <span className="cart-text">Ver carrinho</span>
           <span className="cart-total">R$ {total.toFixed(2)}</span>
         </div>
       )}
 
-      {/* Modal Produto */}
+      {/* Modal Produto - Bottom Sheet Design */}
       {produtoModal && (
-        <div className="modal-overlay" onClick={() => setProdutoModal(null)} style={{ zIndex: 9999 }}>
-          <div className="modal card" onClick={e => e.stopPropagation()} style={{ maxWidth: 450, padding: 0, overflow: 'hidden' }}>
+        <div className="produto-modal-overlay" onClick={() => setProdutoModal(null)}>
+          <div className="produto-modal-content" onClick={e => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setProdutoModal(null)}>
+              <FiX size={20} />
+            </button>
+            
             {produtoModal.imagem_url && (
-              <img src={produtoModal.imagem_url} alt={produtoModal.nome} style={{ width: '100%', height: 200, objectFit: 'cover' }} />
+              <img src={produtoModal.imagem_url} alt={produtoModal.nome} className="modal-header-img" />
             )}
-            <div style={{ padding: 20 }}>
-              <h2 style={{ fontSize: '1.4rem', marginBottom: 8 }}>{produtoModal.nome}</h2>
-              {produtoModal.descricao && <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>{produtoModal.descricao}</p>}
+            
+            <div className="modal-body">
+              <h2 className="modal-produto-nome">{produtoModal.nome}</h2>
+              {produtoModal.descricao && <p className="modal-produto-desc">{produtoModal.descricao}</p>}
               
               {produtoModal.adicionaisDisponiveis && produtoModal.adicionaisDisponiveis.length > 0 && (
-                <div style={{ marginBottom: 20 }}>
-                  <h3 style={{ fontSize: '1rem', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>Adicionais</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ marginBottom: 24 }}>
+                  <h3 className="modal-section-title">Adicionais</h3>
+                  <div>
                     {produtoModal.adicionaisDisponiveis.map(ad => {
                       const isChecked = adicionaisSelecionados.some(a => a.id === ad.id);
                       return (
-                        <label key={ad.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '8px 12px', background: 'var(--bg-card)', border: `1px solid ${isChecked ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <input 
-                              type="checkbox" 
-                              checked={isChecked}
-                              onChange={() => toggleAdicional(ad)}
-                              style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
-                            />
-                            <span style={{ fontWeight: 500 }}>{ad.nome}</span>
+                        <div 
+                          key={ad.id} 
+                          className={`adicional-item ${isChecked ? 'selected' : ''}`}
+                          onClick={() => toggleAdicional(ad)}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div className="custom-checkbox">
+                              {isChecked && <FiCheck size={14} />}
+                            </div>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{ad.nome}</span>
                           </div>
-                          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                          <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
                             {ad.preco > 0 ? `+ R$ ${parseFloat(ad.preco).toFixed(2)}` : 'Grátis'}
                           </span>
-                        </label>
+                        </div>
                       )
                     })}
                   </div>
                 </div>
               )}
 
-              <div style={{ marginBottom: 20 }}>
-                <h3 style={{ fontSize: '1rem', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>Alguma observação?</h3>
+              <div>
+                <h3 className="modal-section-title">Alguma observação?</h3>
                 <textarea 
-                  className="input" 
+                  className="modal-textarea" 
                   placeholder="Ex: Tirar cebola, ponto da carne..."
                   value={observacao}
                   onChange={e => setObservacao(e.target.value)}
-                  style={{ minHeight: 80, resize: 'vertical' }}
                 />
               </div>
+            </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button className="btn btn-primary btn-lg" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }} onClick={handleConfirmarItem}>
-                  <span style={{ fontWeight: 600 }}>Adicionar</span>
-                  <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>R$ {precoModalCalculado.toFixed(2)}</span>
-                </button>
-                <button className="btn btn-secondary btn-lg" style={{ width: '100%' }} onClick={() => setProdutoModal(null)}>
-                  Cancelar
-                </button>
-              </div>
+            <div className="modal-footer">
+              <button className="btn-add-modal" onClick={handleConfirmarItem}>
+                <span>Adicionar ao pedido</span>
+                <span>R$ {precoModalCalculado.toFixed(2)}</span>
+              </button>
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Client Pages
 import Cardapio from './pages/client/Cardapio';
 import Checkout from './pages/client/Checkout';
+import MeusPedidos from './pages/client/MeusPedidos';
 
 // Admin Pages
 import Login from './pages/admin/Login';
@@ -34,6 +35,7 @@ function App() {
             {/* Client routes */}
             <Route path="/:slug" element={<Cardapio />} />
             <Route path="/:slug/checkout" element={<Checkout />} />
+            <Route path="/:slug/pedidos" element={<MeusPedidos />} />
 
             {/* Admin routes */}
             <Route path="/admin/login" element={<Login />} />

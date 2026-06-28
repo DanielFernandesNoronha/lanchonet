@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiGrid, FiPackage, FiMessageSquare, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiX, FiCoffee } from 'react-icons/fi';
+import { FiGrid, FiPackage, FiMessageSquare, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiX } from 'react-icons/fi';
+import MenuLogo from '../../assets/MENU.svg';
 import './Dashboard.css';
 
 export default function Dashboard() {
@@ -18,7 +19,7 @@ export default function Dashboard() {
     <div className="dashboard admin-theme">
       {/* Mobile Header */}
       <div className="mobile-header">
-        <div className="sidebar-logo"><FiCoffee style={{ color: 'var(--accent)' }} /> <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>LanchoNet</span></div>
+        <div className="sidebar-logo"><img src={MenuLogo} alt="MENU" style={{ height: '24px' }}/> <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>MENU</span></div>
         <button className="btn btn-ghost" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
         </button>
@@ -26,8 +27,8 @@ export default function Dashboard() {
 
       <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="sidebar-header hide-mobile">
-          <span className="sidebar-logo"><FiCoffee style={{ color: 'var(--accent)' }} /></span>
-          <h2 className="sidebar-title">LanchoNet</h2>
+          <span className="sidebar-logo"><img src={MenuLogo} alt="MENU" style={{ height: '32px' }}/></span>
+          <h2 className="sidebar-title">MENU</h2>
         </div>
 
         <nav className="sidebar-nav">

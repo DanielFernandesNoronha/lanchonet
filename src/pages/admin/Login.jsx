@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiMail, FiLock, FiUser, FiLink, FiCoffee } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser, FiLink } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import MenuLogo from '../../assets/MENU.svg';
 import './Login.css';
 
 export default function Login() {
@@ -37,8 +38,10 @@ export default function Login() {
     <div className="login-page admin-theme">
       <div className="login-glow" />
       <div className="login-card slide-up">
-        <div className="login-logo" style={{ color: 'var(--accent)' }}><FiCoffee size={48} /></div>
-        <h1 className="login-title">LanchoNet</h1>
+        <div className="login-logo">
+          <img src={MenuLogo} alt="MENU Logo" style={{ height: '48px', width: 'auto' }} />
+        </div>
+        <h1 className="login-title">MENU</h1>
         <p className="login-subtitle">Painel do Restaurante</p>
 
         <form onSubmit={handleSubmit} className="login-form">
