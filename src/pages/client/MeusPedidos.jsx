@@ -98,16 +98,9 @@ export default function MeusPedidos() {
   };
 
   const whiteLabelStyles = lojista ? {
-    '--bg-primary': lojista.cor_secundaria || '#111827',
-    '--bg-card': lojista.cor_fundo_cards || 'rgba(128, 128, 128, 0.15)',
-    '--bg-secondary': lojista.cor_fundo_cards || 'rgba(128, 128, 128, 0.08)',
+    '--header-bg': lojista.cor_secundaria || '#111827',
     '--primary': lojista.cor_principal || '#f97316',
     '--accent': lojista.cor_principal || '#f97316',
-    '--accent-dark': lojista.cor_principal || '#ea580c',
-    '--text-primary': lojista.cor_texto_normal || '#ffffff',
-    '--text-secondary': lojista.cor_texto_secundaria || '#9ca3af',
-    '--text-muted': lojista.cor_texto_secundaria || '#64748b',
-    '--border': 'rgba(128, 128, 128, 0.2)',
   } : {};
 
   return (

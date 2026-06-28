@@ -1,8 +1,9 @@
+/* MeusPedidos.css - Clean Premium Theme */
 .meus-pedidos-page {
   min-height: 100vh;
   padding-bottom: 120px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -11,17 +12,18 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
   position: sticky;
   top: 0;
   z-index: 90;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
 }
 
 .btn-voltar {
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  color: #0f172a;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,17 +35,17 @@
 }
 
 .btn-voltar:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: #f1f5f9;
 }
 
 .login-section {
   max-width: 400px;
   margin: 60px auto;
-  background: var(--bg-card);
+  background: #ffffff;
   padding: 30px;
   border-radius: 24px;
-  border: 1px solid var(--border);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
   text-align: center;
 }
 
@@ -55,33 +57,39 @@
 }
 
 .pedido-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 20px;
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pedido-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.06);
 }
 
 .pedido-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #e2e8f0;
   padding-bottom: 16px;
 }
 
 .pedido-id {
   font-weight: 800;
   font-size: 1.1rem;
-  color: var(--text-primary);
+  color: #0f172a;
 }
 
 .pedido-data {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: #64748b;
 }
 
 .pedido-itens {
@@ -94,14 +102,14 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: #475569;
 }
 
 .pedido-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid #e2e8f0;
   padding-top: 16px;
 }
 
@@ -127,7 +135,7 @@
   left: 30px;
   right: 30px;
   height: 2px;
-  background: var(--border);
+  background: #e2e8f0;
   z-index: 0;
 }
 
@@ -145,12 +153,12 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border);
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: #94a3b8;
   font-size: 0.9rem;
   transition: all 0.3s;
 }
@@ -159,23 +167,19 @@
   background: var(--accent);
   border-color: var(--accent);
   color: white;
-  box-shadow: 0 0 10px var(--accent-glow);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
 }
 
 .timeline-step.completed .timeline-icon {
-  background: var(--green);
-  border-color: var(--green);
+  background: #10b981;
+  border-color: #10b981;
   color: white;
-}
-
-.timeline-step.completed ~ .timeline-step .timeline-icon {
-  /* Itens futuros */
 }
 
 .timeline-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: #64748b;
   text-align: center;
 }
 
@@ -184,5 +188,5 @@
 }
 
 .timeline-step.completed .timeline-label {
-  color: var(--text-primary);
+  color: #0f172a;
 }

@@ -112,19 +112,9 @@ export default function Cardapio() {
   const isFechado = lojista.aberto === false;
 
   const whiteLabelStyles = lojista ? {
-    '--bg-primary': lojista.cor_secundaria || '#111827',
-    '--bg-card': lojista.cor_fundo_cards || 'rgba(128, 128, 128, 0.15)',
-    '--bg-secondary': lojista.cor_fundo_cards || 'rgba(128, 128, 128, 0.08)',
-    '--bg-glass': lojista.cor_fundo_cards || 'rgba(128, 128, 128, 0.2)',
+    '--header-bg': lojista.cor_secundaria || '#111827',
     '--primary': lojista.cor_principal || '#f97316',
     '--accent': lojista.cor_principal || '#f97316',
-    '--accent-light': lojista.cor_principal || '#fb923c',
-    '--accent-dark': lojista.cor_principal || '#ea580c',
-    '--text-primary': lojista.cor_texto_normal || '#ffffff',
-    '--text-secondary': lojista.cor_texto_secundaria || '#9ca3af',
-    '--text-muted': lojista.cor_texto_secundaria || '#64748b',
-    '--border': 'rgba(128, 128, 128, 0.2)',
-    '--border-hover': 'rgba(128, 128, 128, 0.35)',
   } : {};
 
   return (
@@ -214,9 +204,9 @@ export default function Cardapio() {
                 {p.descricao && <p className="produto-desc">{p.descricao}</p>}
                 <div className="produto-footer">
                   <span className="produto-preco">R$ {p.preco.toFixed(2)}</span>
-                  <div className={`btn-add-pill ${isFechado ? 'disabled' : ''}`}>
-                    <FiPlus /> Adicionar
-                  </div>
+                  <button className={`btn-add-subtle ${isFechado ? 'disabled' : ''}`}>
+                    <FiPlus size={18} />
+                  </button>
                 </div>
               </div>
             </div>
