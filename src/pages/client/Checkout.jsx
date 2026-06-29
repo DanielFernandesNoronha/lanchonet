@@ -77,7 +77,7 @@ export default function Checkout() {
         const { data: b } = await supabase.from('taxas_entrega').select('*').eq('lojista_id', loj.id);
         setBairros(b || []);
 
-        const { data: db } = await supabase.from('lojista_dados_bancarios').select('id').eq('lojista_id', loj.id).maybeSingle();
+        const { data: db } = await supabase.from('dados_bancarios_lojista').select('id').eq('lojista_id', loj.id).maybeSingle();
         setTemPix(!!db);
         if (!db) {
           setFormaPagamento('DINHEIRO');
@@ -578,15 +578,15 @@ export default function Checkout() {
               <h3 className="section-title">Como você quer receber?</h3>
               <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
                 <button 
-                  className={`btn ${tipoPedido === 'ENTREGA' ? 'btn-primary' : 'btn-secondary'}`} 
-                  style={{ flex: 1 }} 
+                  className={`btn ${tipoPedido === 'ENTREGA' ? 'btn-primary' : ''}`} 
+                  style={{ flex: 1, border: '1px solid var(--border)', background: tipoPedido === 'ENTREGA' ? 'var(--primary)' : 'transparent', color: tipoPedido === 'ENTREGA' ? '#fff' : 'var(--text-secondary)' }} 
                   onClick={() => setTipoPedido('ENTREGA')}
                 >
                   Entrega
                 </button>
                 <button 
-                  className={`btn ${tipoPedido === 'RETIRADA' ? 'btn-primary' : 'btn-secondary'}`} 
-                  style={{ flex: 1 }} 
+                  className={`btn ${tipoPedido === 'RETIRADA' ? 'btn-primary' : ''}`} 
+                  style={{ flex: 1, border: '1px solid var(--border)', background: tipoPedido === 'RETIRADA' ? 'var(--primary)' : 'transparent', color: tipoPedido === 'RETIRADA' ? '#fff' : 'var(--text-secondary)' }} 
                   onClick={() => { setTipoPedido('RETIRADA'); setTaxaEntrega(0); }}
                 >
                   Retirada no Balcão
