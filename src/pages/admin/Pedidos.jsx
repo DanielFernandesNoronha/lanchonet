@@ -52,8 +52,21 @@ export default function Pedidos() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `lojista_id=eq.${lojista.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setPedidos(prev => [payload.new, ...prev]);
-          toast.success('Novo pedido recebido!');
-          try { new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ==').play(); } catch(e) {}
+          toast.success('Novo pedido recebido!', { duration: 5000 });
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime); // Tom alto (Lá agudo)
+            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3); // Queda de tom
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+          } catch(e) {}
         }
         if (payload.eventType === 'UPDATE') {
           setPedidos(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p));

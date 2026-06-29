@@ -12,88 +12,76 @@ export default function LandingPage() {
       <div className="landing-glow landing-glow-1"></div>
       <div className="landing-glow landing-glow-2"></div>
 
-      {/* Navigation */}
-      <nav className="landing-nav container">
-        <div className="landing-logo">
-          <img src={MenuLogo} alt="LanchoNet Logo" style={{ height: '40px' }} />
-        </div>
-        <div className="landing-nav-actions">
-          <button className="btn btn-ghost" onClick={() => navigate('/admin/login')}>
-            Já tenho conta
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate('/admin/login')}>
-            Criar minha loja <FiArrowRight />
-          </button>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <header className="hero-section container">
-        <div className="hero-content slide-up">
-          <div className="hero-badge">🚀 O Sistema Definitivo para Lanchonetes</div>
-          <h1 className="hero-title">
-            Transforme seu atendimento com um <span className="text-gradient">Cardápio Digital Automático</span>
-          </h1>
-          <p className="hero-subtitle">
-            Crie sua loja em 3 minutos, receba pedidos direto no painel com integração PIX automatizada e atenda seus clientes de forma profissional. Sem taxas abusivas por pedido!
-          </p>
-          <div className="hero-cta">
-            <button className="btn btn-primary btn-lg" onClick={() => navigate('/admin/login')} style={{ fontSize: '1.2rem', padding: '16px 32px' }}>
-              Começar Agora Grátis
-            </button>
-            <p style={{ marginTop: '16px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Teste grátis por 30 dias. Não exigimos cartão de crédito.
-            </p>
+      {/* Fixed Header */}
+      <header className="landing-header">
+        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0' }}>
+          <div className="landing-logo">
+            <img src={MenuLogo} alt="LanchoNet Logo" style={{ height: '36px' }} />
           </div>
-        </div>
-        <div className="hero-visual slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="mockup-window">
-            <div className="mockup-header">
-              <span className="dot red"></span>
-              <span className="dot yellow"></span>
-              <span className="dot green"></span>
-            </div>
-            <div className="mockup-body">
-              <div className="mockup-content">
-                <div className="mockup-item skeleton"></div>
-                <div className="mockup-item skeleton" style={{ width: '80%' }}></div>
-                <div className="mockup-item skeleton" style={{ width: '60%' }}></div>
-                <div className="mockup-badge">Novo Pedido Recebido! 🍔</div>
-              </div>
-            </div>
+          <nav className="landing-nav-links">
+            <a href="#features">Funcionalidades</a>
+            <a href="#pricing">Planos</a>
+          </nav>
+          <div className="landing-nav-actions">
+            <button className="btn btn-ghost" onClick={() => navigate('/admin/login')}>
+              Entrar
+            </button>
+            <button className="btn btn-primary" onClick={() => navigate('/admin/login')}>
+              Criar Loja Grátis
+            </button>
           </div>
         </div>
       </header>
 
+      {/* Hero Section */}
+      <section className="hero-section container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: '140px', paddingBottom: '80px' }}>
+        <div className="hero-content slide-up" style={{ maxWidth: '800px' }}>
+          <h1 className="hero-title" style={{ fontSize: '2.8rem' }}>
+            Transforme seu atendimento com um <span className="text-gradient">Cardápio Digital Inteligente</span>
+          </h1>
+          <p className="hero-subtitle" style={{ fontSize: '1rem', maxWidth: '700px', margin: '0 auto 40px' }}>
+            A plataforma completa para lanchonetes. Crie sua loja rapidamente, personalize o cardápio com as suas cores e receba pedidos no painel com pagamentos automatizados via PIX. Pague uma mensalidade fixa e livre-se das taxas abusivas.
+          </p>
+          <div className="hero-cta">
+            <button className="btn btn-primary btn-lg" onClick={() => navigate('/admin/login')}>
+              Começar Agora Grátis
+            </button>
+            <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Teste grátis. Não exigimos cartão de crédito.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="features-section container">
-        <h2 className="section-title">Por que escolher a LanchoNet?</h2>
+      <section id="features" className="features-section container">
+        <h2 className="section-title">O que tem no nosso sistema?</h2>
         <div className="features-grid">
           <div className="feature-card">
             <div className="feature-icon"><FiSmartphone /></div>
-            <h3>Cardápio Lindo e Responsivo</h3>
-            <p>Seus clientes pedem pelo celular de forma simples. Cores e logo do seu restaurante, sem baixar nenhum app.</p>
+            <h3>Cardápio Personalizado</h3>
+            <p>Seus clientes pedem pelo celular. Você escolhe as cores, envia sua logomarca e deixa o sistema com a cara do seu negócio.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FiDollarSign /></div>
             <h3>PIX Automatizado</h3>
-            <p>Esqueça conferir comprovantes! O cliente escaneia o QR Code e o sistema confirma o pagamento sozinho na hora.</p>
+            <p>O cliente finaliza com um Pix exclusivo para aquele pedido. O sistema reconhece e confirma o pagamento sozinho.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FiMonitor /></div>
-            <h3>Gestão em Tempo Real</h3>
-            <p>Painel administrativo elegante. Seja notificado com um alerta sonoro a cada novo pedido na sua tela.</p>
+            <h3>Alerta de Pedido Real-time</h3>
+            <p>Painel administrativo prático e sonoro! Seja notificado com um alerta sonoro a cada novo pedido na sua tela.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FiMessageCircle /></div>
-            <h3>Integração WhatsApp</h3>
-            <p>Seus clientes podem acompanhar o status do pedido direto no WhatsApp, além de receberem alertas das mudanças de status.</p>
+            <h3>Link com o Restaurante</h3>
+            <p>O cliente acompanha o status do pedido pelo link dele ou aciona seu estabelecimento rapidamente pelo botão do WhatsApp.</p>
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section className="pricing-section container">
+      <section id="pricing" className="pricing-section container">
         <h2 className="section-title">Planos justos para o seu negócio crescer</h2>
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '40px' }}>
           Você só paga uma mensalidade fixa. Chega de deixar 15% ou 20% das suas vendas nos grandes aplicativos de delivery!
