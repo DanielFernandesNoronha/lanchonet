@@ -429,28 +429,49 @@ export default function Checkout() {
     return (
       <div className="checkout-page" style={whiteLabelStyles}>
         <div className="container">
-          <div className="pix-container slide-up" style={{ textAlign: 'center', padding: 30, background: 'var(--bg-card)', borderRadius: 12 }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>📱</div>
-            <h2>Pague com PIX</h2>
-            <p style={{ marginBottom: 20 }}>Escaneie o QR Code ou copie o código abaixo.</p>
-            {pixData.qrCode && <img src={pixData.qrCode} alt="QR Code PIX" style={{ maxWidth: 200, margin: '0 auto 20px', display: 'block', borderRadius: 8 }} />}
+          <div className="pix-container slide-up" style={{ textAlign: 'center', padding: 40, background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', marginBottom: 20 }}>
+              <FiCheck size={32} />
+            </div>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: 8 }}>Pague com PIX</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Escaneie o QR Code abaixo com o app do seu banco</p>
+            
+            {pixData.qrCode && (
+              <div style={{ background: '#fff', padding: 16, borderRadius: 12, display: 'inline-block', marginBottom: 24, boxShadow: 'var(--shadow-md)' }}>
+                <img src={pixData.qrCode} alt="QR Code PIX" style={{ width: 200, height: 200, display: 'block' }} />
+              </div>
+            )}
             
             {pixData.pixCopiaECola && (
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: '0.8rem', fontWeight: 600 }}>Copia e Cola:</p>
-                <div style={{ background: 'var(--bg-default)', padding: 10, borderRadius: 8, fontSize: '0.8rem', wordBreak: 'break-all' }}>
-                  {pixData.pixCopiaECola}
+              <div style={{ marginBottom: 24, textAlign: 'left', maxWidth: 400, margin: '0 auto 24px' }}>
+                <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Ou use o Pix Copia e Cola:</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 8, fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
+                    {pixData.pixCopiaECola}
+                  </div>
+                  <button className="btn btn-primary" style={{ padding: '0 20px', flexShrink: 0 }} onClick={() => { navigator.clipboard.writeText(pixData.pixCopiaECola); toast.success('Copiado!'); }}>
+                    Copiar
+                  </button>
                 </div>
-                <button className="btn btn-secondary btn-sm" style={{ marginTop: 10 }} onClick={() => { navigator.clipboard.writeText(pixData.pixCopiaECola); toast.success('Copiado!'); }}>Copiar</button>
               </div>
             )}
             
             {pixData.url && (
-              <a href={pixData.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-full btn-lg" style={{ marginBottom: 10 }}>
-                Abrir App do Banco
-              </a>
+              <div style={{ maxWidth: 400, margin: '0 auto 24px' }}>
+                <a href={pixData.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-full btn-lg">
+                  Abrir no App do Banco
+                </a>
+              </div>
             )}
-            <p className="pix-total" style={{ fontSize: '1.2rem', fontWeight: 700 }}>Total: R$ {(total + taxaEntrega).toFixed(2)}</p>
+
+            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px dashed var(--border)' }}>
+              <p className="pix-total" style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>Total a pagar</p>
+              <p style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary)' }}>R$ {(total + taxaEntrega).toFixed(2)}</p>
+            </div>
+            
+            <button className="btn btn-ghost" style={{ marginTop: 24 }} onClick={() => navigate(`/${slug}`)}>
+              Voltar ao Início
+            </button>
           </div>
         </div>
       </div>
