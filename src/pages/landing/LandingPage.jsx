@@ -38,11 +38,11 @@ export default function LandingPage() {
       <section className="hero-section hero-split container">
         <div className="hero-content slide-up">
           <h1 className="hero-title">
-            Atendimento <br />
-            <span className="text-gradient">Inteligente</span> com PIX
+            O Sistema Definitivo para<br />
+            <span className="text-gradient">Lanchonetes Inteligentes</span>
           </h1>
           <p className="hero-subtitle">
-            Crie sua loja, personalize o cardápio com as suas cores e receba pedidos no painel com pagamentos PIX automatizados. Pague só uma mensalidade fixa.
+            Automatize o atendimento no WhatsApp, exiba um cardápio digital irresistível e receba via PIX sem pagar taxas por pedido. Assuma o controle total das suas vendas!
           </p>
           <div className="hero-cta">
             <button className="btn btn-primary btn-lg" onClick={() => navigate('/admin/login')}>
@@ -55,27 +55,9 @@ export default function LandingPage() {
         </div>
         
         <div className="hero-visual slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="phone-mockup">
-            <div className="phone-notch"></div>
-            <div className="phone-screen">
-              <div className="app-header">
-                <div className="app-logo"></div>
-                <div className="app-title">Lanchonete</div>
-              </div>
-              <div className="app-body">
-                <div className="app-item"><div className="app-img"></div><div className="app-txt-box"><div className="app-txt1"></div><div className="app-txt2"></div></div></div>
-                <div className="app-item"><div className="app-img"></div><div className="app-txt-box"><div className="app-txt1"></div><div className="app-txt2"></div></div></div>
-              </div>
-              <div className="app-footer">
-                <div className="app-total">Total: R$ 45,00</div>
-                <div className="app-pay-btn">Pagar com PIX</div>
-              </div>
-            </div>
-            {/* Pop-up flutuante PIX */}
-            <div className="hero-float-alert">
-              <FiCheck color="#22c55e" size={20} />
-              <span>PIX Aprovado!</span>
-            </div>
+          <div className="hero-images-showcase">
+            <img src="/img-cardapio.jpg" alt="Exemplo do Cardápio LanchoNet" className="showcase-img back-img" />
+            <img src="/img-whatsapp.jpg" alt="Confirmação de Pedido no WhatsApp" className="showcase-img front-img" />
           </div>
         </div>
       </section>
@@ -183,14 +165,30 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer Melhorado */}
       <footer className="landing-footer">
-        <div className="container">
-          <img src={MenuLogo} alt="LanchoNet" style={{ height: '32px', marginBottom: '16px' }} />
+        <div className="container footer-grid">
+          <div className="footer-brand">
+            <img src={MenuLogo} alt="LanchoNet" style={{ height: '36px', marginBottom: '16px' }} />
+            <p>O sistema criado para descomplicar a vida das lanchonetes modernas, focando em lucros sem taxas embutidas.</p>
+          </div>
+          
+          <div className="footer-links">
+            <h4>Produto</h4>
+            <a href="#features">Funcionalidades</a>
+            <a href="#pricing">Planos e Preços</a>
+            <a href="#">Integração PIX</a>
+          </div>
+
+          <div className="footer-links">
+            <h4>Suporte</h4>
+            <a href="#">Central de Ajuda</a>
+            <a href="#">Falar no WhatsApp</a>
+            <a href="#">Termos de Uso</a>
+          </div>
+        </div>
+        <div className="footer-bottom">
           <p>© {new Date().getFullYear()} LanchoNet. Todos os direitos reservados.</p>
-          <p style={{ marginTop: '8px', color: 'var(--text-muted)' }}>
-            Feito para lanchonetes modernas que querem lucrar mais e pagar menos taxas.
-          </p>
         </div>
       </footer>
     </div>
