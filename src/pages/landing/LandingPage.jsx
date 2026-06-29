@@ -15,8 +15,9 @@ export default function LandingPage() {
       {/* Fixed Header */}
       <header className="landing-header">
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0' }}>
-          <div className="landing-logo">
+          <div className="landing-logo" style={{ display: 'flex', alignItems: 'center' }}>
             <img src={MenuLogo} alt="LanchoNet Logo" style={{ height: '36px' }} />
+            <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', marginLeft: '10px', letterSpacing: '-0.5px' }}>LanchoNet</span>
           </div>
           <nav className="landing-nav-links">
             <a href="#features">Funcionalidades</a>
@@ -34,7 +35,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="hero-section container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: '140px', paddingBottom: '80px' }}>
+      <section className="hero-section container">
         <div className="hero-content slide-up" style={{ maxWidth: '800px' }}>
           <h1 className="hero-title" style={{ fontSize: '2.8rem' }}>
             Transforme seu atendimento com um <span className="text-gradient">Cardápio Digital Inteligente</span>
