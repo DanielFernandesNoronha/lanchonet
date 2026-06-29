@@ -35,21 +35,47 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="hero-section container">
-        <div className="hero-content slide-up" style={{ maxWidth: '800px' }}>
-          <h1 className="hero-title" style={{ fontSize: '2.8rem' }}>
-            Transforme seu atendimento com um <span className="text-gradient">Cardápio Digital Inteligente</span>
+      <section className="hero-section hero-split container">
+        <div className="hero-content slide-up">
+          <h1 className="hero-title">
+            Atendimento <br />
+            <span className="text-gradient">Inteligente</span> com PIX
           </h1>
-          <p className="hero-subtitle" style={{ fontSize: '1rem', maxWidth: '700px', margin: '0 auto 40px' }}>
-            A plataforma completa para lanchonetes. Crie sua loja rapidamente, personalize o cardápio com as suas cores e receba pedidos no painel com pagamentos automatizados via PIX. Pague uma mensalidade fixa e livre-se das taxas abusivas.
+          <p className="hero-subtitle">
+            Crie sua loja, personalize o cardápio com as suas cores e receba pedidos no painel com pagamentos PIX automatizados. Pague só uma mensalidade fixa.
           </p>
           <div className="hero-cta">
             <button className="btn btn-primary btn-lg" onClick={() => navigate('/admin/login')}>
-              Começar Agora Grátis
+              Criar Loja Grátis
             </button>
             <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Teste grátis. Não exigimos cartão de crédito.
+              Teste 30 dias sem compromisso.
             </p>
+          </div>
+        </div>
+        
+        <div className="hero-visual slide-up" style={{ animationDelay: '0.2s' }}>
+          <div className="phone-mockup">
+            <div className="phone-notch"></div>
+            <div className="phone-screen">
+              <div className="app-header">
+                <div className="app-logo"></div>
+                <div className="app-title">Lanchonete</div>
+              </div>
+              <div className="app-body">
+                <div className="app-item"><div className="app-img"></div><div className="app-txt-box"><div className="app-txt1"></div><div className="app-txt2"></div></div></div>
+                <div className="app-item"><div className="app-img"></div><div className="app-txt-box"><div className="app-txt1"></div><div className="app-txt2"></div></div></div>
+              </div>
+              <div className="app-footer">
+                <div className="app-total">Total: R$ 45,00</div>
+                <div className="app-pay-btn">Pagar com PIX</div>
+              </div>
+            </div>
+            {/* Pop-up flutuante PIX */}
+            <div className="hero-float-alert">
+              <FiCheck color="#22c55e" size={20} />
+              <span>PIX Aprovado!</span>
+            </div>
           </div>
         </div>
       </section>
