@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { FiTrash2, FiMessageCircle, FiX, FiCheck, FiEdit2, FiPlus, FiChevronRight, FiDollarSign, FiMapPin, FiClock, FiPackage, FiPhone, FiStar, FiCoffee, FiTruck, FiCheckCircle, FiUser, FiCreditCard, FiShoppingBag, FiPower } from 'react-icons/fi';
+import { FiTrash2, FiMessageCircle, FiX, FiCheck, FiEdit2, FiPlus, FiChevronRight, FiDollarSign, FiMapPin, FiClock, FiPackage, FiPhone, FiStar, FiCoffee, FiTruck, FiCheckCircle, FiUser, FiCreditCard, FiShoppingBag, FiPower, FiSearch } from 'react-icons/fi';
 import './Pedidos.css';
 
 const STATUS_ORDER = ['novo', 'preparando', 'entrega', 'concluido'];
@@ -23,6 +23,10 @@ export default function Pedidos() {
   const [adicionaisGlobais, setAdicionaisGlobais] = useState([]);
   const [showAddItem, setShowAddItem] = useState(false);
   const [expandedItemIdx, setExpandedItemIdx] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showManualTimersModal, setShowManualTimersModal] = useState(false);
+  const [manualTimeEntrega, setManualTimeEntrega] = useState('');
+  const [manualTimeRetirada, setManualTimeRetirada] = useState('');
 
   // Load pedidos + produtos + bairros
   useEffect(() => {
@@ -65,12 +69,13 @@ export default function Pedidos() {
 
     return () => supabase.removeChannel(channel);
   }, [lojista]);
-
   // --- Auto-Advance Timers ---
   const [tick, setTick] = useState(0);
+  const advancingIds = useRef(new Set());
+  const deletingIds = useRef(new Set());
 
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 10000); // Tick every 10s
+    const interval = setInterval(() => setTick(t => t + 1), 1000); // Tick every 1s
     return () => clearInterval(interval);
   }, []);
 
@@ -88,23 +93,36 @@ export default function Pedidos() {
       else if (p.status === 'entrega' && elapsedMins >= (lojista.tempo_entrega ?? 40)) shouldAdvance = true;
 
       if (shouldAdvance && p.status !== 'concluido') {
-        avancarStatus(p);
+        if (!advancingIds.current.has(p.id)) {
+          avancarStatus(p);
+        }
       } else if (p.status === 'concluido' && elapsedMins >= (lojista.tempo_concluido ?? 10)) {
-        excluirPedidoSilencioso(p.id);
+        if (!deletingIds.current.has(p.id)) {
+          excluirPedidoSilencioso(p.id);
+        }
       }
     });
-  }, [tick]); // run every 10s
+  }, [tick]); // run every 1s
 
   async function excluirPedidoSilencioso(id) {
-    const { error } = await supabase.from('pedidos').delete().eq('id', id);
-    if (!error) {
-      setPedidos(prev => prev.filter(p => p.id !== id));
-      if (pedidoSelecionado?.id === id) { setPedidoSelecionado(null); setIsEditing(false); }
+    if (deletingIds.current.has(id)) return;
+    deletingIds.current.add(id);
+
+    try {
+      const { error } = await supabase.from('pedidos').delete().eq('id', id);
+      if (!error) {
+        setPedidos(prev => prev.filter(p => p.id !== id));
+        if (pedidoSelecionado?.id === id) { setPedidoSelecionado(null); setIsEditing(false); }
+      }
+    } finally {
+      deletingIds.current.delete(id);
     }
   }
 
   // --- Actions ---
   async function avancarStatus(pedido) {
+    if (advancingIds.current.has(pedido.id)) return;
+    
     const idx = STATUS_ORDER.indexOf(pedido.status);
     if (idx >= STATUS_ORDER.length - 1) return;
     
@@ -114,45 +132,74 @@ export default function Pedidos() {
       novoStatus = 'concluido';
     }
 
-    const { error } = await supabase.from('pedidos').update({ status: novoStatus }).eq('id', pedido.id);
-    if (error) return toast.error('Erro ao atualizar');
-
-    setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, status: novoStatus } : p));
-    if (pedidoSelecionado?.id === pedido.id) setPedidoSelecionado(prev => ({...prev, status: novoStatus}));
-    toast.success(`Status → ${STATUS_LABELS[novoStatus]}`);
-
-    // WhatsApp notification
-    const statusMsgs = {
-      'preparando': 'seu pedido já está em produção 🍳',
-      'entrega': 'Boas notícias! Seu pedido acabou de sair para entrega! 🛵',
-    };
-    
-    let mensagemEnvio = '';
-    if (novoStatus === 'concluido') {
-      const tipoPedido = pedido.cliente_dados?.tipo_pedido || 'ENTREGA';
-      if (tipoPedido === 'RETIRADA') {
-        mensagemEnvio = 'seu pedido está pronto para retirada 🛍️';
-      } else {
-        mensagemEnvio = 'obrigado pela preferencia, volte sempre ❤️';
-      }
-    } else if (statusMsgs[novoStatus]) {
-      mensagemEnvio = statusMsgs[novoStatus];
+    let previsaoManual = '';
+    // Se estiver avançando para preparando e os timers automáticos estiverem pausados
+    if (novoStatus === 'preparando' && lojista?.pausar_timers) {
+      previsaoManual = tipoPedido === 'ENTREGA' ? lojista.tempo_manual_entrega : lojista.tempo_manual_retirada;
     }
 
-    if (mensagemEnvio) {
-      try {
-        const nome = pedido.clientes?.nome || pedido.cliente_dados?.nome || 'Cliente';
-        let tel = pedido.clientes?.telefone || pedido.cliente_dados?.whatsapp || '';
-        tel = tel.replace(/\D/g, '');
-        if (tel) {
-          if (!tel.startsWith('55') && tel.length <= 11) tel = `55${tel}`;
-          await fetch('/webhook/whatsapp-status-update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lojista_id: lojista.id, telefone: tel, mensagem: `Olá, ${nome}!\n\n${mensagemEnvio}\n\nPedido #${pedido.id.slice(0, 6)}` })
-          });
+    advancingIds.current.add(pedido.id);
+
+    try {
+      const nowISO = new Date().toISOString();
+      const { error } = await supabase.from('pedidos').update({ 
+        status: novoStatus,
+        status_updated_at: nowISO
+      }).eq('id', pedido.id);
+      if (error) {
+        toast.error('Erro ao atualizar');
+        return;
+      }
+
+      setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, status: novoStatus, status_updated_at: nowISO } : p));
+      if (pedidoSelecionado?.id === pedido.id) setPedidoSelecionado(prev => ({...prev, status: novoStatus, status_updated_at: nowISO}));
+      toast.success(`Status → ${STATUS_LABELS[novoStatus]}`);
+
+      // WhatsApp notification
+      const pedidoNum = pedido.id.slice(0, 6).toUpperCase();
+      const nomeRestaurante = lojista?.nome || 'Restaurante';
+      const nomeCliente = pedido.clientes?.nome || pedido.cliente_dados?.nome || 'Cliente';
+      const tipoPed = pedido.cliente_dados?.tipo_pedido || 'ENTREGA';
+
+      let txtPreparando = `👨‍🍳 *Pedido #${pedidoNum} em preparo!*\n\n*${nomeRestaurante}* já está cuidando do seu pedido com todo carinho. 🍳\n\n`;
+      if (previsaoManual && typeof previsaoManual === 'string' && previsaoManual.trim()) {
+        txtPreparando += `⏱️ *Previsão estimada:* ${previsaoManual.trim()}\n\n`;
+      }
+      txtPreparando += `Fique de olho, logo logo fica pronto!`;
+
+      const statusMsgs = {
+        'preparando': txtPreparando,
+        'entrega': `🛵 *Pedido #${pedidoNum} saiu para entrega!*\n\nNosso entregador já está a caminho! 🏃‍♂️\n\nFique de olho no portão. 😊\n\n*${nomeRestaurante}* agradece sua preferência! ❤️`,
+      };
+      
+      let mensagemEnvio = '';
+      if (novoStatus === 'concluido') {
+        if (tipoPed === 'RETIRADA') {
+          mensagemEnvio = `🛍️ *Pedido #${pedidoNum} pronto para retirada!*\n\nOlá, ${nomeCliente}! Seu pedido está te esperando no balcão.\n\nNão esqueça de confirmar o número do pedido na retirada.\n\n*${nomeRestaurante}* 💚`;
+        } else {
+          mensagemEnvio = `✅ *Pedido #${pedidoNum} entregue!*\n\nEsperamos que você aproveite muito, ${nomeCliente}! 🎉\n\nQualquer dúvida ou problema, fale comigo aqui no WhatsApp.\n\n*${nomeRestaurante}* ❤️`;
         }
-      } catch (e) { console.error('WhatsApp error', e); }
+      } else if (statusMsgs[novoStatus]) {
+        mensagemEnvio = statusMsgs[novoStatus];
+      }
+
+      if (mensagemEnvio) {
+        try {
+          const nome = pedido.clientes?.nome || pedido.cliente_dados?.nome || 'Cliente';
+          let tel = pedido.clientes?.telefone || pedido.cliente_dados?.whatsapp || '';
+          tel = tel.replace(/\D/g, '');
+          if (tel) {
+            if (!tel.startsWith('55') && tel.length <= 11) tel = `55${tel}`;
+            await fetch('/webhook/whatsapp-status-update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lojista_id: lojista.id, telefone: tel, mensagem: `Olá, ${nome}!\n\n${mensagemEnvio}\n\nPedido #${pedido.id.slice(0, 6)}` })
+            });
+          }
+        } catch (e) { console.error('WhatsApp error', e); }
+      }
+    } finally {
+      advancingIds.current.delete(pedido.id);
     }
   }
 
@@ -185,13 +232,53 @@ export default function Pedidos() {
 
   async function toggleTimers() {
     if (!lojista) return;
-    const novoStatus = !lojista.pausar_timers;
-    const { error } = await supabase.from('lojistas').update({ pausar_timers: novoStatus }).eq('id', lojista.id);
+    const isPausando = !lojista.pausar_timers;
+    
+    if (isPausando) {
+      setManualTimeEntrega(lojista.tempo_manual_entrega || '');
+      setManualTimeRetirada(lojista.tempo_manual_retirada || '');
+      setShowManualTimersModal(true);
+      return;
+    }
+
+    // Retomando timers automáticos
+    const { error } = await supabase.from('lojistas').update({ 
+      pausar_timers: false,
+      tempo_manual_entrega: null,
+      tempo_manual_retirada: null
+    }).eq('id', lojista.id);
+
     if (!error) {
-      lojista.pausar_timers = novoStatus;
+      lojista.pausar_timers = false;
+      lojista.tempo_manual_entrega = null;
+      lojista.tempo_manual_retirada = null;
       setTick(t => t + 1);
-      toast.success(novoStatus ? 'Timers Pausados!' : 'Timers Ativos!');
+      toast.success('Timers Ativos! Calculando automaticamente.');
     } else toast.error('Erro! Rode o script SQL no Supabase.');
+  }
+
+  async function confirmManualTimers(e) {
+    e.preventDefault();
+    if (!manualTimeEntrega.trim() || !manualTimeRetirada.trim()) {
+      return toast.error('Por favor, preencha os dois tempos (entrega e retirada).');
+    }
+    
+    const { error } = await supabase.from('lojistas').update({ 
+      pausar_timers: true,
+      tempo_manual_entrega: manualTimeEntrega.trim(),
+      tempo_manual_retirada: manualTimeRetirada.trim()
+    }).eq('id', lojista.id);
+
+    if (!error) {
+      lojista.pausar_timers = true;
+      lojista.tempo_manual_entrega = manualTimeEntrega.trim();
+      lojista.tempo_manual_retirada = manualTimeRetirada.trim();
+      setShowManualTimersModal(false);
+      setTick(t => t + 1);
+      toast.success('Timers pausados e previsões manuais salvas!');
+    } else {
+      toast.error('Ocorreu um erro. Por favor, certifique-se de ter rodado o SQL de colunas novas no Supabase!');
+    }
   }
 
   async function updateTimerConfig(status, val) {
@@ -303,21 +390,37 @@ export default function Pedidos() {
 
   return (
     <div className="ped-page">
-      <div className="ped-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="ped-top-bar" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Left: title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <h1 className="ped-title">Pedidos</h1>
           <span className="ped-badge-total">{totalPedidos} total</span>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button 
-            onClick={toggleTimers} 
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: lojista?.pausar_timers ? 'var(--red-glow)' : 'var(--blue-glow)', color: lojista?.pausar_timers ? 'var(--red)' : 'var(--blue)', fontSize: '0.8rem', fontWeight: 600 }}
+
+        {/* Center: search */}
+        <div style={{ flex: 1, position: 'relative', maxWidth: 380 }}>
+          <FiSearch size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            className="input"
+            placeholder="Buscar por nome ou código..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ paddingLeft: 34, height: 36, fontSize: '0.85rem', width: '100%' }}
+          />
+        </div>
+
+        {/* Right: action buttons */}
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' }}>
+          <button
+            onClick={toggleTimers}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: lojista?.pausar_timers ? 'var(--red-glow)' : 'var(--blue-glow)', color: lojista?.pausar_timers ? 'var(--red)' : 'var(--blue)', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
           >
             <FiClock /> {lojista?.pausar_timers ? 'Timers Pausados' : 'Timers Ativos'}
           </button>
-          <button 
-            onClick={toggleLoja} 
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: lojista?.aberto ? 'var(--green-glow)' : 'var(--red-glow)', color: lojista?.aberto ? 'var(--green)' : 'var(--red)', fontSize: '0.8rem', fontWeight: 600 }}
+          <button
+            onClick={toggleLoja}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: lojista?.aberto ? 'var(--green-glow)' : 'var(--red-glow)', color: lojista?.aberto ? 'var(--green)' : 'var(--red)', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
           >
             <FiPower /> {lojista?.aberto ? 'Loja Aberta' : 'Loja Fechada'}
           </button>
@@ -328,7 +431,14 @@ export default function Pedidos() {
         {/* KANBAN */}
         <div className={`ped-kanban ${pedidoSelecionado ? 'ped-kanban--compact' : ''}`}>
           {STATUS_ORDER.map(status => {
-            const count = pedidos.filter(p => p.status === status).length;
+            const count = pedidos.filter(p => {
+              if (p.status !== status) return false;
+              if (!searchQuery.trim()) return true;
+              const q = searchQuery.trim().toLowerCase();
+              const nome = (p.clientes?.nome || p.cliente_dados?.nome || '').toLowerCase();
+              const codigo = p.id.slice(0, 6).toLowerCase();
+              return nome.includes(q) || codigo.includes(q);
+            }).length;
             return (
               <div key={status} className="ped-col">
                 <div className={`ped-col-header ped-col-header--${status}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px' }}>
@@ -351,7 +461,14 @@ export default function Pedidos() {
                   </div>
                 </div>
                 <div className="ped-col-body">
-                  {pedidos.filter(p => p.status === status).map(pedido => {
+                  {pedidos.filter(p => {
+                    if (p.status !== status) return false;
+                    if (!searchQuery.trim()) return true;
+                    const q = searchQuery.trim().toLowerCase();
+                    const nome = (p.clientes?.nome || p.cliente_dados?.nome || '').toLowerCase();
+                    const codigo = p.id.slice(0, 6).toLowerCase();
+                    return nome.includes(q) || codigo.includes(q);
+                  }).map(pedido => {
                     const nome = pedido.clientes?.nome || pedido.cliente_dados?.nome || '—';
                     const pago = pedido.cliente_dados?.pago;
                     const isActive = pedidoSelecionado?.id === pedido.id;
@@ -676,6 +793,45 @@ export default function Pedidos() {
               <button className="btn btn-ghost" onClick={() => setShowConfirmModal(false)}>Cancelar</button>
               <button className="btn btn-danger" onClick={excluirPedidoConfirmado}>Excluir Pedido</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Previsão Manual */}
+      {showManualTimersModal && (
+        <div className="modal-overlay">
+          <div className="confirm-modal-card slide-up">
+            <h3 className="confirm-modal-title" style={{ textAlign: 'left', marginBottom: 16 }}>⏱️ Definir Tempo Manual</h3>
+            <p className="confirm-modal-message" style={{ textAlign: 'left', marginBottom: 24 }}>
+              Como os timers automáticos estão sendo desativados, você precisa definir uma previsão fixa para mostrar aos clientes.
+            </p>
+            <form onSubmit={confirmManualTimers}>
+              <div className="input-group" style={{ marginBottom: 16 }}>
+                <label>Tempo para <strong>Entrega</strong></label>
+                <input 
+                  type="text" 
+                  className="input" 
+                  placeholder="Ex: ~50 min, em 1h..."
+                  value={manualTimeEntrega}
+                  onChange={e => setManualTimeEntrega(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="input-group" style={{ marginBottom: 24 }}>
+                <label>Tempo para <strong>Retirada</strong></label>
+                <input 
+                  type="text" 
+                  className="input" 
+                  placeholder="Ex: ~30 min, 20-30 min..."
+                  value={manualTimeRetirada}
+                  onChange={e => setManualTimeRetirada(e.target.value)}
+                />
+              </div>
+              <div className="confirm-modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowManualTimersModal(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary">Salvar Previsão</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -705,6 +705,22 @@ button.ped-edit-item-name:hover { background: rgba(255,255,255,0.05); }
 }
 
 @media (max-width: 768px) {
+  .ped-top-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .ped-top-bar > div:first-child {
+    flex: none;
+  }
+  .ped-top-bar > div:nth-child(2) {
+    order: 3;
+    flex: 0 0 100%;
+    max-width: 100% !important;
+  }
+  .ped-top-bar > div:nth-child(3) {
+    margin-left: auto;
+  }
   .ped-kanban {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
@@ -727,6 +743,14 @@ button.ped-edit-item-name:hover { background: rgba(255,255,255,0.05); }
 }
 
 @media (max-width: 500px) {
+  .ped-top-bar > div:nth-child(3) {
+    flex: 0 0 100%;
+    margin-left: 0;
+  }
+  .ped-top-bar > div:nth-child(3) button {
+    flex: 1;
+    justify-content: center;
+  }
   .ped-kanban {
     grid-template-columns: 1fr;
   }

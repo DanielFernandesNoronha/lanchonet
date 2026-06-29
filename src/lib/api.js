@@ -41,3 +41,29 @@ export async function desconectarWhatsApp(lojistaId) {
   return res.json();
 }
 
+export async function obterNomeWhatsApp(lojistaId, number) {
+  const res = await fetch(`${N8N_BASE}/whatsapp-profile-name`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lojista_id: lojistaId, number }),
+  });
+  return res.json();
+}
+
+export async function gerarCobrancaMensalidade(lojistaId) {
+  const res = await fetch(`${N8N_BASE}/saas-gerar-cobranca`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lojista_id: lojistaId }),
+  });
+  return res.json();
+}
+
+export async function cadastrarContaRecebimento(lojistaId, dadosBancarios) {
+  const res = await fetch(`${N8N_BASE}/saas-cadastrar-conta-recebimento`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lojista_id: lojistaId, ...dadosBancarios }),
+  });
+  return res.json();
+}

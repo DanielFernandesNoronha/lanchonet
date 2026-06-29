@@ -1,7 +1,6 @@
 /* Wpp Page Styles */
 .whatsapp-page {
-  max-width: 1000px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .whatsapp-card {
@@ -24,15 +23,15 @@
 .wpp-dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
+  gap: 24px;
   width: 100%;
   align-items: start;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .wpp-dashboard-grid {
     grid-template-columns: 1fr;
-    gap: 30px;
+    gap: 20px;
   }
 }
 
@@ -190,4 +189,46 @@
 
 .spin {
   animation: spin 1s linear infinite;
+}
+
+/* Status Icons & Text Premium styling */
+.wpp-status-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.wpp-status-icon-wrapper.disconnected {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.15);
+  color: var(--red);
+}
+
+.wpp-status-icon-wrapper.connected {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.15);
+  color: var(--green);
+}
+
+.wpp-status-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.wpp-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  max-width: 480px;
+  margin: 0 auto 16px auto;
+  line-height: 1.5;
 }

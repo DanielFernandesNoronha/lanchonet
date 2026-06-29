@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiGrid, FiPackage, FiMessageSquare, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiX } from 'react-icons/fi';
+import { FiGrid, FiPackage, FiMessageSquare, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiX, FiDollarSign } from 'react-icons/fi';
 import MenuLogo from '../../assets/MENU.svg';
 import './Dashboard.css';
 
 export default function Dashboard() {
-  const { lojista, logout } = useAuth();
+  const { lojista, logout, isBloqueado } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -19,7 +19,7 @@ export default function Dashboard() {
     <div className="dashboard admin-theme">
       {/* Mobile Header */}
       <div className="mobile-header">
-        <div className="sidebar-logo"><img src={MenuLogo} alt="MENU" style={{ height: '28px' }}/></div>
+        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center' }}><img src={MenuLogo} alt="lanchonet" style={{ height: '38px' }}/></div>
         <button className="btn btn-ghost" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
         </button>
@@ -27,7 +27,7 @@ export default function Dashboard() {
 
       <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="sidebar-header hide-mobile">
-          <span className="sidebar-logo" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}><img src={MenuLogo} alt="MENU" style={{ height: '48px' }}/></span>
+          <span className="sidebar-logo" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}><img src={MenuLogo} alt="lanchonet" style={{ height: '48px' }}/></span>
         </div>
 
         <nav className="sidebar-nav">
@@ -42,6 +42,12 @@ export default function Dashboard() {
           </NavLink>
           <NavLink to="/admin/config" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setMenuOpen(false)}>
             <FiSettings /> Configurações
+          </NavLink>
+          <NavLink to="/admin/financeiro" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setMenuOpen(false)} style={{ position: 'relative' }}>
+            <FiDollarSign /> Financeiro
+            {isBloqueado && (
+              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
+            )}
           </NavLink>
         </nav>
 

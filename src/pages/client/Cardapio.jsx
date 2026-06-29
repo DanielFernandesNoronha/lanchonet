@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useCart } from '../../contexts/CartContext';
-import { FiShoppingCart, FiPlus, FiMinus, FiSearch, FiList, FiX, FiCheck } from 'react-icons/fi';
+import { FiShoppingCart, FiPlus, FiMinus, FiSearch, FiList, FiX, FiCheck, FiClock, FiAlertTriangle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import './Cardapio.css';
 
@@ -11,6 +11,9 @@ export default function Cardapio() {
   const navigate = useNavigate();
   const { items, addItem, updateQuantidade, totalItems, total } = useCart();
   const [lojista, setLojista] = useState(null);
+  const [cachedLogo, setCachedLogo] = useState(() => {
+    try { return localStorage.getItem(`lanchonet_logo_${slug}`) || ''; } catch (e) { return ''; }
+  });
   const [categorias, setCategorias] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [filtro, setFiltro] = useState('');
@@ -27,6 +30,10 @@ export default function Cardapio() {
       const { data: loj } = await supabase.from('lojistas').select('*').eq('slug', slug).single();
       if (!loj) { toast.error('Restaurante não encontrado'); return; }
       setLojista(loj);
+      if (loj?.logo_url) {
+        localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
+        setCachedLogo(loj.logo_url);
+      }
       
       // Atualiza o título da aba e o favicon
       if (loj.nome) document.title = loj.nome;
@@ -63,21 +70,86 @@ export default function Cardapio() {
     load();
   }, [slug]);
 
+  useEffect(() => {
+    if (!lojista?.id) return;
+
+    console.log("Iniciando conexões Realtime para lojista:", lojista.id);
+
+    // 1. Listen to lojistas table (open/closed state, style changes)
+    const lojistaChannel = supabase
+      .channel(`realtime-lojista-${lojista.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'lojistas', filter: `id=eq.${lojista.id}` },
+        (payload) => {
+          console.log("Realtime: Lojista atualizado:", payload);
+          setLojista(payload.new);
+          if (payload.new?.nome) document.title = payload.new.nome;
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime: Status lojista:", status);
+      });
+
+    // 2. Listen to categorias table
+    const categoriesChannel = supabase
+      .channel(`realtime-categorias-${lojista.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categorias', filter: `lojista_id=eq.${lojista.id}` },
+        async (payload) => {
+          console.log("Realtime: Categoria modificada:", payload);
+          const { data: cats } = await supabase.from('categorias').select('*').eq('lojista_id', lojista.id).order('ordem');
+          setCategorias(cats || []);
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime: Status categorias:", status);
+      });
+
+    // 3. Listen to produtos table
+    const productsChannel = supabase
+      .channel(`realtime-produtos-${lojista.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'produtos', filter: `lojista_id=eq.${lojista.id}` },
+        async (payload) => {
+          console.log("Realtime: Produto modificado:", payload);
+          const { data: prods } = await supabase.from('produtos')
+            .select('*, produto_adicionais(adicionais(*))')
+            .eq('lojista_id', lojista.id)
+            .eq('disponivel', true)
+            .order('nome');
+          
+          const prodsFormatted = (prods || []).map(p => ({
+            ...p,
+            adicionaisDisponiveis: (p.produto_adicionais || [])
+              .map(pa => pa.adicionais)
+              .filter(ad => ad && ad.ativo)
+          }));
+          setProdutos(prodsFormatted);
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime: Status produtos:", status);
+      });
+
+    return () => {
+      console.log("Encerrando conexões Realtime.");
+      supabase.removeChannel(lojistaChannel);
+      supabase.removeChannel(categoriesChannel);
+      supabase.removeChannel(productsChannel);
+    };
+  }, [lojista?.id]);
+
   const produtosFiltrados = produtos.filter(p => {
-    return p.nome.toLowerCase().includes(filtro.toLowerCase());
+    const matchesSearch = p.nome.toLowerCase().includes(filtro.toLowerCase());
+    const matchesCategory = !catAtiva || p.categoria_id === catAtiva;
+    return matchesSearch && matchesCategory;
   });
 
-  const scrollToCategory = (id) => {
+  const selecionarCategoria = (id) => {
     setCatAtiva(id);
-    if (!id) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    const element = document.getElementById(`cat-${id}`);
-    if (element) {
-      const y = element.getBoundingClientRect().top + window.scrollY - 130;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
   };
 
   const abrirModalProduto = (produto) => {
@@ -108,22 +180,51 @@ export default function Cardapio() {
 
   if (loading) {
     return (
-      <div className="cardapio-page">
-        <div className="container">
-          {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 120, marginBottom: 16 }} />)}
-        </div>
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999
+      }}>
+        {cachedLogo ? (
+          <img src={cachedLogo} alt="Logo" style={{ width: 100, height: 100, borderRadius: '50%', marginBottom: 20, objectFit: 'contain', animation: 'pulse 1.5s infinite ease-in-out' }} />
+        ) : (
+          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid var(--accent, #f97316)', animation: 'spin 1s linear infinite', marginBottom: 20 }} />
+        )}
+        <h2 style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: 600 }}>Carregando...</h2>
       </div>
     );
+
   }
 
   if (!lojista) {
     return <div className="cardapio-page"><div className="container"><h2>Restaurante não encontrado</h2></div></div>;
   }
 
+  if (lojista.status_assinatura === 'atrasado') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: 24, textAlign: 'center' }}>
+        {lojista.logo_url && (
+          <img src={lojista.logo_url} alt={lojista.nome} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20, opacity: 0.5 }} />
+        )}
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Sistema temporariamente indisponível</h2>
+        <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: 360 }}>
+          O cardápio de <strong>{lojista.nome}</strong> está temporariamente fora do ar. Por favor, tente novamente mais tarde.
+        </p>
+      </div>
+    );
+  }
+
   const isFechado = lojista.aberto === false;
 
   const whiteLabelStyles = lojista ? {
     '--bg-primary': lojista.cor_secundaria || '#f8fafc',
+    '--bg-page': lojista.cor_secundaria || '#f8fafc',
     '--bg-card': lojista.cor_fundo_cards || '#ffffff',
     '--header-bg': lojista.cor_secundaria || '#111827',
     '--primary': lojista.cor_principal || '#f97316',
@@ -140,12 +241,6 @@ export default function Cardapio() {
         backgroundImage: lojista.capa_url ? `url(${lojista.capa_url})` : 'none',
         backgroundColor: lojista.capa_url ? 'transparent' : 'var(--bg-secondary)'
       }}>
-        <div className="header-top-actions">
-          <button className="btn-meus-pedidos" onClick={() => navigate(`/${slug}/pedidos`)}>
-            <FiList /> Meus Pedidos
-          </button>
-        </div>
-        
         <div className="container header-profile-container">
           {lojista.logo_url && (
             <img src={lojista.logo_url} alt="Logo" className="lojista-logo-new" />
@@ -163,8 +258,24 @@ export default function Cardapio() {
       </header>
 
       {isFechado && (
-        <div style={{ background: '#ef4444', color: 'white', textAlign: 'center', padding: '12px', fontWeight: 'bold', margin: '0 auto 20px auto', maxWidth: '1200px', width: 'calc(100% - 40px)', borderRadius: '16px', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)' }}>
-          Loja Fechada no momento. Os pedidos estão temporariamente pausados.
+        <div style={{ 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          background: '#ef4444', 
+          color: 'white', 
+          textAlign: 'center', 
+          padding: '12px 20px', 
+          fontSize: '0.95rem',
+          fontWeight: 'bold', 
+          width: '100%', 
+          margin: 0,
+          borderRadius: 0,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+        }}>
+          <FiAlertTriangle size={18} style={{ flexShrink: 0 }} />
+          <span>Loja Fechada no momento. Os pedidos estão temporariamente pausados.</span>
         </div>
       )}
 
@@ -186,9 +297,9 @@ export default function Cardapio() {
           {/* Categories */}
           {categorias.length > 0 && (
             <div className="categorias-scroll">
-              <button className={`cat-chip ${!catAtiva ? 'active' : ''}`} onClick={() => scrollToCategory(null)}>Todos</button>
+              <button className={`cat-chip ${!catAtiva ? 'active' : ''}`} onClick={() => selecionarCategoria(null)}>Todos</button>
               {categorias.map(c => (
-                <button key={c.id} className={`cat-chip ${catAtiva === c.id ? 'active' : ''}`} onClick={() => scrollToCategory(c.id)}>
+                <button key={c.id} className={`cat-chip ${catAtiva === c.id ? 'active' : ''}`} onClick={() => selecionarCategoria(c.id)}>
                   {c.nome}
                 </button>
               ))}
@@ -274,20 +385,6 @@ export default function Cardapio() {
         )}
       </div>
 
-      {/* Floating Cart */}
-      {totalItems > 0 && (
-        <div className="cart-float" onClick={() => navigate(`/${slug}/checkout`)}>
-          <div className="cart-float-left">
-            <div className="cart-icon-wrapper">
-              <FiShoppingCart size={18} />
-              <span className="cart-badge">{totalItems}</span>
-            </div>
-            <span className="cart-text">Ver carrinho</span>
-          </div>
-          <span className="cart-total">R$ {total.toFixed(2)}</span>
-        </div>
-      )}
-
       {/* Modal Produto - Bottom Sheet Design */}
       {produtoModal && (
         <div className="produto-modal-overlay" onClick={() => setProdutoModal(null)}>
@@ -352,6 +449,25 @@ export default function Cardapio() {
           </div>
         </div>
       )}
+
+      {/* Bottom Nav Bar */}
+      <div className="bottom-nav">
+        <button className="bottom-nav-item active" onClick={() => navigate(`/${slug}`)}>
+          <FiList size={20} />
+          <span>Cardápio</span>
+        </button>
+        <button className="bottom-nav-item" onClick={() => navigate(`/${slug}/checkout`)}>
+          <div className="bottom-nav-icon-wrapper">
+            <FiShoppingCart size={20} />
+            {totalItems > 0 && <span className="bottom-nav-badge">{totalItems}</span>}
+          </div>
+          <span>Carrinho</span>
+        </button>
+        <button className="bottom-nav-item" onClick={() => navigate(`/${slug}/pedidos`)}>
+          <FiClock size={20} />
+          <span>Pedidos</span>
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
@@ -25,41 +25,57 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function fetchLojista(userId) {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('lojistas')
-      .select('*')
+      .select('*, planos(id, nome, valor_mensal)')
       .eq('user_id', userId)
       .maybeSingle();
       
-    if (data) {
-      setLojista(data);
-    }
+    if (data) setLojista(data);
     setLoading(false);
   }
 
+  // --- Computed subscription values ---
+  const isBloqueado = lojista?.status_assinatura === 'atrasado';
+
+  const diasRestantesTrial = useMemo(() => {
+    if (!lojista?.trial_expira_em || lojista.status_assinatura !== 'trial') return null;
+    const diff = new Date(lojista.trial_expira_em) - new Date();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }, [lojista]);
+
+  // --- Auth actions ---
   async function login(email, password) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   }
 
-  async function register(email, password, nomeRestaurante, slug) {
+  async function register(email, password, nomeRestaurante, slug, planoId) {
     if (password.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres');
     
-    // 1. Criar usuário no Supabase Auth
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw new Error(error.message);
 
-    // 2. Criar o perfil do lojista vinculado ao usuário
-    // Supabase pode retornar user mesmo com confirmação de email pendente
     const userId = data.user?.id || data.session?.user?.id;
     if (userId) {
+      const agora = new Date();
+      const expiraTrial = new Date(agora.getTime() + 30 * 24 * 60 * 60 * 1000);
+
       const { error: lojistaError } = await supabase.from('lojistas').insert({
         user_id: userId,
         nome: nomeRestaurante,
         email: email,
-        slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, '')
+        slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+        plano_id: planoId || null,
+        status_assinatura: 'trial',
+        trial_iniciado_em: agora.toISOString(),
+        trial_expira_em: expiraTrial.toISOString(),
+        proximo_vencimento: expiraTrial.toISOString(),
       });
       if (lojistaError) throw new Error(lojistaError.message);
+      
+      // Busca o lojista para preencher o state IMEDIATAMENTE antes de navegar
+      await fetchLojista(userId);
     }
   }
 
@@ -70,10 +86,15 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, lojista, loading, login, register, logout, fetchLojista }}>
+    <AuthContext.Provider value={{
+      user, lojista, loading,
+      isBloqueado, diasRestantesTrial,
+      login, register, logout, fetchLojista
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export const useAuth = () => useContext(AuthContext);
+

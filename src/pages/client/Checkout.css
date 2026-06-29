@@ -1,6 +1,6 @@
 .checkout-page {
   min-height: 100vh;
-  padding-bottom: 40px;
+  padding-bottom: 90px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
@@ -107,3 +107,47 @@
   color: var(--text-secondary);
 }
 .pix-total strong { color: var(--accent); }
+
+/* ===== QUANTIDADE CONTROL ===== */
+.quantidade-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-secondary, #f1f5f9);
+  border: 1px solid var(--border, rgba(0,0,0,0.06));
+  border-radius: 99px;
+  padding: 4px;
+}
+
+.qty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-card, #ffffff);
+  color: var(--text-primary, #0f172a);
+  cursor: pointer;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: background 0.2s, transform 0.1s;
+}
+
+.qty-btn:hover {
+  background: var(--bg-card-hover, #f8fafc);
+  transform: scale(1.05);
+}
+
+.qty-btn:active {
+  transform: scale(0.95);
+}
+
+.qty-num {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  min-width: 20px;
+  text-align: center;
+}

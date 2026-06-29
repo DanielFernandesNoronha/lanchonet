@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiMail, FiLock, FiUser, FiLink } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser, FiLink, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import MenuLogo from '../../assets/MENU.svg';
 import './Login.css';
@@ -12,6 +12,7 @@ export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [nomeRestaurante, setNomeRestaurante] = useState('');
   const [slug, setSlug] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,11 +24,12 @@ export default function Login() {
       if (isLogin) {
         await login(email, senha);
         toast.success('Bem-vindo!');
+        navigate('/admin');
       } else {
         await register(email, senha, nomeRestaurante, slug);
-        toast.success('Conta criada com sucesso!');
+        toast.success('Conta criada! Por favor, termine de configurar seu restaurante.');
+        navigate('/admin/config'); // Redireciona para configurações
       }
-      navigate('/admin');
     } catch (err) {
       toast.error(err.message || 'Erro ao processar');
     }
@@ -74,7 +76,34 @@ export default function Login() {
             <label>Senha</label>
             <div className="input-icon">
               <FiLock />
-              <input className="input" type="password" placeholder="••••••••" value={senha} onChange={e => setSenha(e.target.value)} required />
+              <input 
+                className="input" 
+                type={showPassword ? 'text' : 'password'} 
+                placeholder="••••••••" 
+                value={senha} 
+                onChange={e => setSenha(e.target.value)} 
+                required 
+                style={{ paddingRight: '40px' }}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 0
+                }}
+              >
+                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
             </div>
           </div>
           <button className="btn btn-primary btn-full btn-lg" type="submit" disabled={loading}>

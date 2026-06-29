@@ -1,20 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
-import { criarCobranca } from '../../lib/api';
+import { criarCobranca, obterNomeWhatsApp } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
-import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiCheck, FiLogOut } from 'react-icons/fi';
+import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiCheck, FiLogOut, FiList, FiClock, FiShoppingCart } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import './Checkout.css';
 
 export default function Checkout() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { items, updateQuantidade, removeItem, total } = useCart();
+  const { items, updateQuantidade, removeItem, total, totalItems } = useCart();
   
   // Lojista info
   const [lojistaId, setLojistaId] = useState(null);
   const [lojistaObj, setLojistaObj] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [cachedLogo, setCachedLogo] = useState(() => {
+    try { return localStorage.getItem(`lanchonet_logo_${slug}`) || ''; } catch (e) { return ''; }
+  });
   const [bairros, setBairros] = useState([]);
   
   // Checkout Steps
@@ -45,6 +49,7 @@ export default function Checkout() {
   
   const [enviando, setEnviando] = useState(false);
   const [pixData, setPixData] = useState(null);
+  const [temPix, setTemPix] = useState(false);
 
   useEffect(() => {
     async function loadLojista() {
@@ -52,6 +57,10 @@ export default function Checkout() {
       if (loj) {
         setLojistaId(loj.id);
         setLojistaObj(loj);
+        if (loj.logo_url) {
+          localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
+          setCachedLogo(loj.logo_url);
+        }
         
         // Atualiza o título da aba e o favicon
         if (loj.nome) document.title = `Checkout | ${loj.nome}`;
@@ -67,7 +76,14 @@ export default function Checkout() {
 
         const { data: b } = await supabase.from('taxas_entrega').select('*').eq('lojista_id', loj.id);
         setBairros(b || []);
+
+        const { data: db } = await supabase.from('lojista_dados_bancarios').select('id').eq('lojista_id', loj.id).maybeSingle();
+        setTemPix(!!db);
+        if (!db) {
+          setFormaPagamento('DINHEIRO');
+        }
       }
+      setLoading(false);
     }
     loadLojista();
   }, [slug]);
@@ -80,7 +96,36 @@ export default function Checkout() {
           .eq('lojista_id', lojistaId)
           .eq('whatsapp', whatsapp)
           .maybeSingle();
-        setIsNovoCadastro(!data);
+        
+        const novo = !data;
+        setIsNovoCadastro(novo);
+        
+        if (novo) {
+          try {
+            const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
+            const res = await obterNomeWhatsApp(lojistaId, numeroWpp);
+            if (res && (res.name || res.pushName)) {
+              setNome(res.name || res.pushName);
+            }
+          } catch (e) {
+            console.error("Erro ao buscar nome do whatsapp:", e);
+          }
+        } else {
+          try {
+            const { data: cliFull } = await supabase.from('clientes')
+              .select('*')
+              .eq('id', data.id)
+              .single();
+            if (cliFull && (!cliFull.nome || cliFull.nome === '—' || cliFull.nome.trim() === '')) {
+              const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
+              const res = await obterNomeWhatsApp(lojistaId, numeroWpp);
+              const wppName = res?.name || res?.pushName;
+              if (wppName) {
+                await supabase.from('clientes').update({ nome: wppName }).eq('id', cliFull.id);
+              }
+            }
+          } catch (e) {}
+        }
       };
       checkSeExiste();
     } else {
@@ -115,24 +160,17 @@ export default function Checkout() {
         toast.success('Login com sucesso!');
         setStep(3);
       } else {
-        toast.error('Senha incorreta! Te enviamos um aviso no WhatsApp.');
-        // Enviar aviso no WhatsApp com a senha cadastrada
+        toast.error('Senha incorreta. Verifique e tente novamente.');
+        // Aviso no WhatsApp - sem expor a senha!
         try {
           const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
-          const textMsg = `🔐 *Aviso de Login Incorreto*
-
-Olá! Identificamos uma tentativa de login com senha incorreta no site.
-
-Sua senha cadastrada é: *${cliente.senha_hash}*
-
-Se não foi você, por favor desconsidere.`;
           fetch('/webhook/whatsapp-status-update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               lojista_id: lojistaId,
               telefone: numeroWpp,
-              mensagem: textMsg
+              mensagem: `🔐 *Aviso de Segurança*\n\nIdentificamos uma tentativa de login com senha incorreta no cardápio.\n\nSe não foi você, pode ignorar esta mensagem. Caso tenha esquecido sua senha, entre em contato com o restaurante.`
             })
           }).catch(e => console.error(e));
         } catch (e) {
@@ -210,6 +248,7 @@ Se não foi você, por favor desconsidere.`;
       const payload = {
         lojista_id: lojistaId,
         cliente: {
+          nome: clienteLogado.nome,
           whatsapp: clienteLogado.whatsapp,
           tipo_pedido: tipoPedido,
           endereco: tipoPedido === 'ENTREGA' ? endereco : null,
@@ -264,50 +303,89 @@ Se não foi você, por favor desconsidere.`;
         navigate(`/${slug}/pedidos`);
       }
 
-      // Enviar mensagem de comanda via n8n (se não for erro)
+      // Enviar mensagem de comanda via n8n
       if (!errPedido && clienteLogado.whatsapp) {
         try {
           const numeroWpp = clienteLogado.whatsapp.length <= 11 ? `55${clienteLogado.whatsapp}` : clienteLogado.whatsapp;
           
+          // Itens formatados
           let itensTexto = items.map(i => {
-            let itemStr = `*${i.quantidade}x ${i.nome}* (R$ ${(i.precoCalculado * i.quantidade).toFixed(2)})`;
+            let itemStr = `• *${i.quantidade}x ${i.nome}* — R$ ${(i.precoCalculado * i.quantidade).toFixed(2)}`;
             if (i.adicionais && i.adicionais.length > 0) {
-              itemStr += `\n  _Adicionais: ${i.adicionais.map(a => a.nome).join(', ')}_`;
+              itemStr += `\n  ↳ Adicionais: ${i.adicionais.map(a => a.nome).join(', ')}`;
             }
             if (i.observacao) {
-              itemStr += `\n  _Obs: ${i.observacao}_`;
+              itemStr += `\n  ↳ Obs: ${i.observacao}`;
             }
             return itemStr;
-          }).join('\n\n');
+          }).join('\n');
 
-          const tempoEstimado = (lojistaObj.tempo_novo ?? 5) + (lojistaObj.tempo_preparando ?? 30) + (tipoPedido === 'ENTREGA' ? (lojistaObj.tempo_entrega ?? 40) : 0);
-          
-          const localEntrega = tipoPedido === 'ENTREGA' 
-            ? `${endereco.rua}, ${endereco.numero}${endereco.complemento ? `, ${endereco.complemento}` : ''} - Bairro: ${bairros.find(b => b.id === endereco.bairro_id)?.bairro || ''}`
-            : 'Retirada no Balcão';
-            
-          let textMsg = `📝 *PEDIDO CONFIRMADO (#${pedidoDb.id.slice(0, 6)})*
-----------------------------------------
+          // Calcular previsão de tempo
+          let tempoEstimado = '';
+          if (lojistaObj.pausar_timers) {
+            // Se timers estiverem pausados, usa a previsão manual enviada pelo admin
+            tempoEstimado = tipoPedido === 'ENTREGA' ? lojistaObj.tempo_manual_entrega : lojistaObj.tempo_manual_retirada;
+          } else {
+            // Timers automáticos
+            const tempoNovo = lojistaObj.tempo_novo;
+            const tempoPreparando = lojistaObj.tempo_preparando;
+            const tempoEntrega = lojistaObj.tempo_entrega;
+            if (tempoNovo || tempoPreparando || tempoEntrega) {
+              const minutos = (tempoNovo ?? 5) + (tempoPreparando ?? 30) + (tipoPedido === 'ENTREGA' ? (tempoEntrega ?? 40) : 0);
+              tempoEstimado = `~${minutos} min`;
+            }
+          }
 
-👤 *Cliente:* ${clienteLogado.nome}
-📞 *Telefone:* ${clienteLogado.whatsapp}
+          // Bloco de pagamento
+          let pagamentoTexto = '';
+          if (formaPagamento === 'PIX') {
+            pagamentoTexto = `💠 *Pagamento:* PIX\n   ↳ O QR Code foi enviado no site. Aguarde confirmação automática.`;
+          } else if (formaPagamento === 'DINHEIRO') {
+            pagamentoTexto = `💵 *Pagamento:* Dinheiro`;
+            if (trocoPara && parseFloat(trocoPara) > 0) {
+              const troco = parseFloat(trocoPara) - payload.cliente.total_final;
+              pagamentoTexto += `\n   ↳ Troco para: R$ ${parseFloat(trocoPara).toFixed(2)}`;
+              if (troco > 0) pagamentoTexto += ` _(troco de R$ ${troco.toFixed(2)})_`;
+            } else {
+              pagamentoTexto += `\n   ↳ Sem troco necessário`;
+            }
+          } else if (formaPagamento === 'MAQUININHA') {
+            pagamentoTexto = `💳 *Pagamento:* Maquininha (débito/crédito)`;
+          }
 
-🛒 *Itens:*
-${itensTexto}
+          // Bloco de entrega
+          let entregaTexto = '';
+          if (tipoPedido === 'ENTREGA') {
+            const nomeBairro = bairros.find(b => b.id === endereco.bairro_id)?.bairro || '';
+            const ruaNum = `${endereco.rua}, ${endereco.semNumero ? 'S/N' : endereco.numero}`;
+            const complementoStr = endereco.complemento ? `, ${endereco.complemento}` : '';
+            const referenciaStr = endereco.referencia ? `\n   ↳ Referência: ${endereco.referencia}` : '';
+            entregaTexto = `🛵 *Tipo:* Entrega\n📍 *Endereço:* ${ruaNum}${complementoStr} — ${nomeBairro}${referenciaStr}`;
+            if (taxaEntrega > 0) {
+              entregaTexto += `\n🪙 *Taxa de entrega:* R$ ${taxaEntrega.toFixed(2)}`;
+            }
+          } else {
+            entregaTexto = `🛍️ *Tipo:* Retirada no Balcão`;
+          }
 
-----------------------------------------
-🛵 *Tipo:* ${tipoPedido === 'ENTREGA' ? 'Entrega' : 'Retirada'}
-📍 *Endereço:* ${localEntrega}
-💬 *Obs. Endereço:* ${tipoPedido === 'ENTREGA' && endereco.referencia ? endereco.referencia : 'Nenhuma'}
+          let textMsg = `📋 *PEDIDO CONFIRMADO! #${pedidoDb.id.slice(0, 6).toUpperCase()}*\n`;
+          textMsg += `🏪 *${lojistaObj.nome}*\n`;
+          textMsg += `━━━━━━━━━━━━━━━━━━\n`;
+          textMsg += `👤 *Cliente:* ${clienteLogado.nome}\n\n`;
+          textMsg += `🛒 *Itens do Pedido:*\n${itensTexto}\n\n`;
+          textMsg += `━━━━━━━━━━━━━━━━━━\n`;
+          textMsg += `${entregaTexto}\n\n`;
+          textMsg += `${pagamentoTexto}\n\n`;
+          textMsg += `━━━━━━━━━━━━━━━━━━\n`;
+          textMsg += `💰 *Subtotal:* R$ ${total.toFixed(2)}\n`;
+          if (tipoPedido === 'ENTREGA' && taxaEntrega > 0) {
+            textMsg += `🪙 *Entrega:* R$ ${taxaEntrega.toFixed(2)}\n`;
+          }
+          textMsg += `🔥 *Total:* *R$ ${payload.cliente.total_final.toFixed(2)}*\n`;
+          if (tempoEstimado) {
+            textMsg += `\n⏱️ *Previsão:* ${tempoEstimado}`;
+          }
 
-💳 *Forma de Pagamento:* ${formaPagamento}
-💰 *Status do Pagamento:* Pendente
-
-⏱️ *Previsão:* ~${tempoEstimado} minutos
-💵 *Taxa de Entrega:* ${tipoPedido === 'ENTREGA' ? `R$ ${taxaEntrega.toFixed(2)}` : 'R$ 0.00'}
-
-🔥 *Total a Pagar:* *R$ ${payload.cliente.total_final.toFixed(2)}*`;
-          
           await fetch('/webhook/whatsapp-status-update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -318,7 +396,7 @@ ${itensTexto}
             })
           });
         } catch (e) {
-          console.error("Erro ao enviar comanda via wpp", e);
+          console.error('Erro ao enviar comanda via wpp', e);
         }
       }
 
@@ -344,7 +422,28 @@ ${itensTexto}
     '--border': 'rgba(128, 128, 128, 0.2)',
     '--border-hover': 'rgba(128, 128, 128, 0.35)',
   } : {};
-  
+  if (loading) {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999
+      }}>
+        {cachedLogo ? (
+          <img src={cachedLogo} alt="Logo" style={{ width: 100, height: 100, borderRadius: '50%', marginBottom: 20, objectFit: 'contain', animation: 'pulse 1.5s infinite ease-in-out' }} />
+        ) : (
+          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid var(--accent, #f97316)', animation: 'spin 1s linear infinite', marginBottom: 20 }} />
+        )}
+        <h2 style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: 600 }}>Carregando...</h2>
+      </div>
+    );
+  }
+
   if (pixData) {
     return (
       <div className="checkout-page" style={whiteLabelStyles}>
@@ -385,16 +484,23 @@ ${itensTexto}
           : 'var(--bg-secondary)', 
         borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
       }}>
-        <button className="btn btn-ghost" onClick={() => step > 1 ? setStep(step - 1) : navigate(`/${slug}`)} style={{ color: lojistaObj?.capa_url ? (lojistaObj.cor_fundo_cards || '#ffffff') : 'var(--text-primary)' }}>
-          <FiArrowLeft /> Voltar
-        </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {lojistaObj?.logo_url && <img src={lojistaObj.logo_url} alt="Logo" style={{ width: 45, height: 45, borderRadius: '50%', objectFit: 'contain' }} />}
           <h2 style={{ fontSize: '1.1rem', color: lojistaObj?.capa_url ? (lojistaObj.cor_fundo_cards || '#ffffff') : 'var(--text-primary)', margin: 0 }}>
             {step === 1 ? 'Revisão' : step === 2 ? 'Identificação' : step === 3 ? 'Endereço' : 'Pagamento'}
           </h2>
         </div>
-        <div style={{ width: 80 }} />
+        <button 
+          className="btn-voltar-header" 
+          onClick={() => step > 1 ? setStep(step - 1) : navigate(`/${slug}`)} 
+          style={lojistaObj?.capa_url ? { 
+            background: 'rgba(255, 255, 255, 0.2)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
+            color: '#ffffff' 
+          } : {}}
+        >
+          <FiArrowLeft size={16} /> Voltar
+        </button>
       </header>
 
       <div className="container" style={{ paddingBottom: 100 }}>
@@ -422,7 +528,7 @@ ${itensTexto}
                   )}
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                    <div className="quantidade-control" style={{ background: 'var(--bg-default)' }}>
+                    <div className="quantidade-control">
                       <button className="qty-btn" onClick={() => updateQuantidade(item.cartItemId, item.quantidade - 1)}><FiMinus /></button>
                       <span className="qty-num">{item.quantidade}</span>
                       <button className="qty-btn" onClick={() => updateQuantidade(item.cartItemId, item.quantidade + 1)}><FiPlus /></button>
@@ -568,35 +674,45 @@ ${itensTexto}
               <h3 className="section-title">Como quer pagar?</h3>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-                <label className={`card ${formaPagamento === 'PIX' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: formaPagamento === 'PIX' ? '2px solid var(--primary)' : '' }}>
-                  <input type="radio" name="pagamento" checked={formaPagamento === 'PIX'} onChange={() => setFormaPagamento('PIX')} />
-                  <div style={{ flex: 1 }}>
-                    <strong>Pagar pelo Site (PIX)</strong>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Rápido, seguro e liberado na hora.</p>
-                  </div>
-                </label>
+                {/* PIX — só mostra se tiver dados bancários */}
+                {temPix && (
+                  <label className={`card ${formaPagamento === 'PIX' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: formaPagamento === 'PIX' ? '2px solid var(--primary)' : '' }}>
+                    <input type="radio" name="pagamento" checked={formaPagamento === 'PIX'} onChange={() => setFormaPagamento('PIX')} />
+                    <div style={{ flex: 1 }}>
+                      <strong>Pagar pelo Site (PIX)</strong>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Rápido, seguro e liberado na hora.</p>
+                    </div>
+                  </label>
+                )}
                 
+                {/* Maquininha — texto muda conforme tipo */}
                 <label className={`card ${formaPagamento === 'MAQUININHA' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: formaPagamento === 'MAQUININHA' ? '2px solid var(--primary)' : '' }}>
                   <input type="radio" name="pagamento" checked={formaPagamento === 'MAQUININHA'} onChange={() => setFormaPagamento('MAQUININHA')} />
                   <div style={{ flex: 1 }}>
-                    <strong>Cartão na Entrega</strong>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>O motoboy leva a maquininha.</p>
+                    <strong>{tipoPedido === 'ENTREGA' ? 'Cartão na Entrega' : 'Cartão na Retirada'}</strong>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                      {tipoPedido === 'ENTREGA' ? 'O motoboy leva a maquininha.' : 'Pague com cartão ao retirar.'}
+                    </p>
                   </div>
                 </label>
 
+                {/* Dinheiro — texto muda conforme tipo */}
                 <label className={`card ${formaPagamento === 'DINHEIRO' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: formaPagamento === 'DINHEIRO' ? '2px solid var(--primary)' : '' }}>
                   <input type="radio" name="pagamento" checked={formaPagamento === 'DINHEIRO'} onChange={() => setFormaPagamento('DINHEIRO')} />
                   <div style={{ flex: 1 }}>
-                    <strong>Dinheiro na Entrega</strong>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Pagamento em espécie.</p>
+                    <strong>{tipoPedido === 'ENTREGA' ? 'Dinheiro na Entrega' : 'Dinheiro na Retirada'}</strong>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                      {tipoPedido === 'ENTREGA' ? 'Pagamento em espécie na entrega.' : 'Pague em espécie ao retirar.'}
+                    </p>
                   </div>
                 </label>
               </div>
 
+              {/* Troco — só para dinheiro */}
               {formaPagamento === 'DINHEIRO' && (
                 <div className="input-group slide-up">
                   <label>Precisa de troco para quanto?</label>
-                  <input className="input" placeholder="Ex: 50" value={trocoPara} onChange={e => setTrocoPara(e.target.value)} />
+                  <input className="input" placeholder="Ex: 50 (ou deixe em branco se não precisar)" value={trocoPara} onChange={e => setTrocoPara(e.target.value)} />
                 </div>
               )}
             </section>
@@ -614,6 +730,24 @@ ${itensTexto}
             </button>
           </div>
         )}
+      </div>
+      {/* Bottom Nav Bar */}
+      <div className="bottom-nav">
+        <button className="bottom-nav-item" onClick={() => navigate(`/${slug}`)}>
+          <FiList size={20} />
+          <span>Cardápio</span>
+        </button>
+        <button className="bottom-nav-item active" onClick={() => navigate(`/${slug}/checkout`)}>
+          <div className="bottom-nav-icon-wrapper">
+            <FiShoppingCart size={20} />
+            {totalItems > 0 && <span className="bottom-nav-badge">{totalItems}</span>}
+          </div>
+          <span>Carrinho</span>
+        </button>
+        <button className="bottom-nav-item" onClick={() => navigate(`/${slug}/pedidos`)}>
+          <FiClock size={20} />
+          <span>Pedidos</span>
+        </button>
       </div>
     </div>
   );

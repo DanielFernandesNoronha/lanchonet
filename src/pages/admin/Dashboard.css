@@ -3,7 +3,9 @@
   min-height: 100vh;
   background: var(--bg-primary);
   color: var(--text-primary);
+  overflow-x: hidden;
 }
+
 .sidebar {
   width: 250px;
   background: var(--bg-card);
@@ -17,11 +19,13 @@
   z-index: 50;
   transition: transform 0.3s ease;
 }
+
 .mobile-header {
   display: none;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
-  padding: 16px 20px;
+  height: 64px;
+  padding: 0 20px;
   align-items: center;
   justify-content: space-between;
   position: fixed;
@@ -29,6 +33,7 @@
   left: 0;
   right: 0;
   z-index: 40;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 @media (max-width: 768px) {
@@ -46,7 +51,7 @@
   }
   .main-content {
     margin-left: 0 !important;
-    padding: 80px 16px 32px !important;
+    padding: 84px 16px 32px !important;
   }
 }
 

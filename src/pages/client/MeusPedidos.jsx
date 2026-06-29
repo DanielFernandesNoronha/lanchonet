@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { FiArrowLeft, FiClock, FiCheckCircle, FiTruck, FiPackage, FiLogOut } from 'react-icons/fi';
+import { FiArrowLeft, FiClock, FiCheckCircle, FiTruck, FiPackage, FiLogOut, FiList, FiShoppingCart, FiShoppingBag } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { useCart } from '../../contexts/CartContext';
 import './MeusPedidos.css';
 
 export default function MeusPedidos() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { totalItems } = useCart();
   
   const [lojista, setLojista] = useState(null);
+  const [cachedLogo, setCachedLogo] = useState(() => {
+    try { return localStorage.getItem(`lanchonet_logo_${slug}`) || ''; } catch (e) { return ''; }
+  });
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clienteLogado, setClienteLogado] = useState(null);
@@ -24,6 +29,10 @@ export default function MeusPedidos() {
       const { data: loj } = await supabase.from('lojistas').select('*').eq('slug', slug).single();
       if (loj) {
         setLojista(loj);
+        if (loj.logo_url) {
+          localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
+          setCachedLogo(loj.logo_url);
+        }
         if (loj.nome) document.title = `Meus Pedidos | ${loj.nome}`;
       }
     }
@@ -51,6 +60,39 @@ export default function MeusPedidos() {
     setPedidos(data || []);
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (!clienteLogado) return;
+
+    const channel = supabase
+      .channel(`realtime-pedidos-${clienteLogado.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pedidos',
+          filter: `cliente_id=eq.${clienteLogado.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setPedidos(prev => {
+              if (prev.some(p => p.id === payload.new.id)) return prev;
+              return [payload.new, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setPedidos(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+          } else if (payload.eventType === 'DELETE') {
+            setPedidos(prev => prev.filter(p => p.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clienteLogado]);
 
   const handleLogin = async () => {
     if (!whatsapp || !senha) return toast.error('Preencha WhatsApp e senha');
@@ -84,9 +126,13 @@ export default function MeusPedidos() {
     switch(status) {
       case 'novo': return 1;
       case 'preparando': return 2;
-      case 'pronto': return 3;
-      case 'a_caminho': return 3; // O mesmo passo na UI, muda só o ícone
-      case 'entregue': return 4;
+      case 'pronto':
+      case 'a_caminho':
+      case 'entrega':
+        return 3;
+      case 'entregue':
+      case 'concluido':
+        return 4;
       case 'cancelado': return -1;
       default: return 1;
     }
@@ -98,24 +144,72 @@ export default function MeusPedidos() {
   };
 
   const whiteLabelStyles = lojista ? {
+    '--bg-primary': lojista.cor_secundaria || '#f8fafc',
+    '--bg-page': lojista.cor_secundaria || '#f8fafc',
+    '--bg-card': lojista.cor_fundo_cards || '#ffffff',
     '--header-bg': lojista.cor_secundaria || '#111827',
     '--primary': lojista.cor_principal || '#f97316',
     '--accent': lojista.cor_principal || '#f97316',
+    '--text-primary': lojista.cor_texto_normal || '#0f172a',
+    '--text-secondary': lojista.cor_texto_secundaria || '#64748b',
+    '--border': 'rgba(128, 128, 128, 0.2)',
   } : {};
+
+  if (loading) {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999
+      }}>
+        {cachedLogo ? (
+          <img src={cachedLogo} alt="Logo" style={{ width: 100, height: 100, borderRadius: '50%', marginBottom: 20, objectFit: 'contain', animation: 'pulse 1.5s infinite ease-in-out' }} />
+        ) : (
+          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid var(--accent, #f97316)', animation: 'spin 1s linear infinite', marginBottom: 20 }} />
+        )}
+        <h2 style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: 600 }}>Carregando...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="meus-pedidos-page fade-in" style={whiteLabelStyles}>
-      <header className="meus-pedidos-header">
-        <button className="btn-voltar" onClick={() => navigate(`/${slug}`)}>
-          <FiArrowLeft size={24} />
-        </button>
-        <h1 style={{ fontSize: '1.2rem', margin: 0 }}>Meus Pedidos</h1>
-        <div style={{ flex: 1 }}></div>
-        {clienteLogado && (
-          <button className="btn-voltar" onClick={handleLogout} title="Sair">
-            <FiLogOut size={20} />
-          </button>
-        )}
+      <header className="meus-pedidos-header" style={{
+        background: lojista?.capa_url 
+          ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${lojista.capa_url}) center/cover no-repeat` 
+          : 'var(--bg-secondary)', 
+        borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {lojista?.logo_url && (
+            <img 
+              src={lojista.logo_url} 
+              alt="Logo" 
+              style={{ width: 45, height: 45, borderRadius: '50%', objectFit: 'contain' }} 
+            />
+          )}
+          <h1 style={{ fontSize: '1.1rem', color: lojista?.capa_url ? '#ffffff' : 'var(--text-primary)', margin: 0 }}>Meus Pedidos</h1>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {clienteLogado && (
+            <button 
+              className="btn-voltar-header" 
+              onClick={handleLogout} 
+              style={lojista?.capa_url ? { 
+                background: 'rgba(255, 255, 255, 0.2)', 
+                border: '1px solid rgba(255, 255, 255, 0.3)', 
+                color: '#ffffff'
+              } : {}}
+            >
+              <FiLogOut size={16} /> Sair
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="container">
@@ -160,9 +254,29 @@ export default function MeusPedidos() {
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>Carregando pedidos...</div>
             ) : pedidos.length === 0 ? (
-              <div className="empty-state">
-                <p>Você ainda não fez nenhum pedido.</p>
-                <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => navigate(`/${slug}`)}>
+              <div className="empty-state slide-up">
+                <div style={{ color: 'var(--accent)', marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                  <FiShoppingBag size={48} />
+                </div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Nenhum pedido por aqui</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '280px', margin: '0 auto 16px auto', lineHeight: 1.4 }}>
+                  Você ainda não realizou nenhum pedido. Que tal dar uma olhada no nosso cardápio e escolher algo gostoso?
+                </p>
+                <button 
+                  className="btn" 
+                  style={{ 
+                    padding: '12px 32px', 
+                    fontSize: '0.9rem', 
+                    borderRadius: '8px', 
+                    background: 'var(--primary, #f97316)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 700,
+                    boxShadow: '0 4px 12px rgba(249, 115, 22, 0.15)',
+                    cursor: 'pointer'
+                  }} 
+                  onClick={() => navigate(`/${slug}`)}
+                >
                   Ver Cardápio
                 </button>
               </div>
@@ -203,7 +317,9 @@ export default function MeusPedidos() {
                         </div>
                         <div className={`timeline-step ${step >= 4 ? 'completed' : ''}`}>
                           <div className="timeline-icon"><FiCheckCircle /></div>
-                          <span className="timeline-label">Entregue</span>
+                          <span className="timeline-label">
+                            {isEntrega ? 'Entregue' : 'Retirado'}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -230,6 +346,25 @@ export default function MeusPedidos() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Bottom Nav Bar */}
+      <div className="bottom-nav">
+        <button className="bottom-nav-item" onClick={() => navigate(`/${slug}`)}>
+          <FiList size={20} />
+          <span>Cardápio</span>
+        </button>
+        <button className="bottom-nav-item" onClick={() => navigate(`/${slug}/checkout`)}>
+          <div className="bottom-nav-icon-wrapper">
+            <FiShoppingCart size={20} />
+            {totalItems > 0 && <span className="bottom-nav-badge">{totalItems}</span>}
+          </div>
+          <span>Carrinho</span>
+        </button>
+        <button className="bottom-nav-item active" onClick={() => navigate(`/${slug}/pedidos`)}>
+          <FiClock size={20} />
+          <span>Pedidos</span>
+        </button>
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, lojista, loading, isBloqueado } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -13,5 +14,11 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (!user) return <Navigate to="/admin/login" replace />;
+
+  // Se inadimplente, só permite acessar a aba Financeiro
+  if (isBloqueado && location.pathname !== '/admin/financeiro') {
+    return <Navigate to="/admin/financeiro" replace />;
+  }
+
   return children;
 }
