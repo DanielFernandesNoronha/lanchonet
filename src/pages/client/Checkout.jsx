@@ -469,9 +469,21 @@ export default function Checkout() {
               <p style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary)' }}>R$ {(total + taxaEntrega).toFixed(2)}</p>
             </div>
             
-            <button className="btn btn-ghost" style={{ marginTop: 24 }} onClick={() => navigate(`/${slug}`)}>
-              Voltar ao Início
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
+              <button className="btn btn-primary btn-lg btn-full" onClick={() => navigate(`/${slug}/pedidos`)}>
+                Acompanhar pelo Site
+              </button>
+              <button 
+                className="btn btn-secondary btn-lg btn-full" 
+                onClick={() => {
+                  const num = (lojistaObj?.telefone || '').replace(/\D/g, '');
+                  if (num) window.open(`https://wa.me/55${num}`, '_blank');
+                  else window.open(`https://wa.me/`, '_blank');
+                }}
+              >
+                Acompanhar pelo WhatsApp
+              </button>
+            </div>
           </div>
         </div>
       </div>
