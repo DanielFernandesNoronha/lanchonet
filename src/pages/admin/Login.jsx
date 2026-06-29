@@ -13,9 +13,9 @@ export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [nomeRestaurante, setNomeRestaurante] = useState('');
-  const [slug, setSlug] = useState('');
   const [planos, setPlanos] = useState([]);
   const [planoSelecionado, setPlanoSelecionado] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,26 @@ export default function Login() {
         toast.success('Bem-vindo!');
         navigate('/admin');
       } else {
-        await register(email, senha, nomeRestaurante, slug, planoSelecionado);
+        if (senha !== confirmarSenha) {
+          toast.error('As senhas não coincidem!');
+          setLoading(false);
+          return;
+        }
+        
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_~`-]).{8,}$/;
+        if (!passwordRegex.test(senha)) {
+          toast.error('A senha deve ter no mínimo 8 caracteres, incluindo uma letra maiúscula, um número e um caractere especial.');
+          setLoading(false);
+          return;
+        }
+
+        const geradoSlug = nomeRestaurante
+          .trim()
+          .toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-');
+
+        await register(email, senha, nomeRestaurante, geradoSlug, planoSelecionado);
         toast.success('Conta criada! Por favor, termine de configurar seu restaurante.');
         navigate('/admin/config'); // Redireciona para configurações
       }
@@ -66,13 +85,6 @@ export default function Login() {
                 <div className="input-icon">
                   <FiUser />
                   <input className="input" type="text" placeholder="Meu Restaurante" value={nomeRestaurante} onChange={e => setNomeRestaurante(e.target.value)} required />
-                </div>
-              </div>
-              <div className="input-group">
-                <label>URL do Cardápio (Slug)</label>
-                <div className="input-icon">
-                  <FiLink />
-                  <input className="input" type="text" placeholder="meu-restaurante" value={slug} onChange={e => setSlug(e.target.value)} required />
                 </div>
               </div>
 
@@ -152,6 +164,25 @@ export default function Login() {
               </button>
             </div>
           </div>
+
+          {!isLogin && (
+            <div className="input-group">
+              <label>Confirmar Senha</label>
+              <div className="input-icon">
+                <FiLock />
+                <input 
+                  className="input" 
+                  type={showPassword ? 'text' : 'password'} 
+                  placeholder="••••••••" 
+                  value={confirmarSenha} 
+                  onChange={e => setConfirmarSenha(e.target.value)} 
+                  required 
+                  style={{ paddingRight: '40px' }}
+                />
+              </div>
+            </div>
+          )}
+
           <button className="btn btn-primary btn-full btn-lg" type="submit" disabled={loading}>
             {loading ? 'Aguarde...' : (isLogin ? 'Entrar' : 'Criar Conta')}
           </button>
