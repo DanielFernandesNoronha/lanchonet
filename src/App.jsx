@@ -22,6 +22,9 @@ import Financeiro from './pages/admin/Financeiro';
 import MasterLogin from './pages/master/MasterLogin';
 import MasterDashboard from './pages/master/MasterDashboard';
 
+// Landing Page
+import LandingPage from './pages/landing/LandingPage';
+
 import './index.css';
 
 function App() {
@@ -57,7 +60,10 @@ function App() {
             <Route path="/master/login" element={<MasterLogin />} />
             <Route path="/master" element={<MasterDashboard />} />
 
-            <Route path="/" element={<Navigate to="/admin/login" replace />} />
+            {/* Landing Page */}
+            <Route path="/landingpage" element={<LandingPage />} />
+            
+            <Route path="/" element={<LandingPage />} />
           </Routes>
         </CartProvider>
       </AuthProvider>
