@@ -48,7 +48,7 @@ export default function LandingPage() {
             <span className="text-gradient">sem pagar comissão</span>
           </h1>
           <p className="hero-subtitle">
-            Crie seu cardápio digital em minutos, receba pedidos em tempo real no painel e confirme pagamentos via PIX automaticamente. Uma mensalidade fixa. Zero taxa por pedido.
+            Crie seu cardápio digital personalizado, receba pedidos em tempo real no painel e confirme pagamentos via PIX. Pague uma mensalidade fixa — sem comissão por pedido para a LanchoNet.
           </p>
           <div className="hero-cta-row">
             <button className="btn btn-primary btn-lg" onClick={() => navigate('/admin/login')}>
@@ -70,8 +70,8 @@ export default function LandingPage() {
           </div>
           <div className="stat-card accent">
             <FiDollarSign className="stat-icon" />
-            <span className="stat-number">R$0</span>
-            <span className="stat-label">Taxa por pedido</span>
+            <span className="stat-number">Fixo</span>
+            <span className="stat-label">Mensalidade sem comissão de delivery</span>
           </div>
           <div className="stat-card">
             <FiMonitor className="stat-icon" />
@@ -91,26 +91,19 @@ export default function LandingPage() {
         <div className="preview-label">Sistema em uso real</div>
         <h2 className="section-title">Veja como funciona na prática</h2>
         <p className="section-subtitle">
-          Seu cliente pede pelo celular, você vê o pedido na tela, recebe o PIX e envia a confirmação automática pelo WhatsApp. Simples assim.
+          Seu cliente acessa o link da sua loja, monta o pedido pelo celular e finaliza com PIX. Você recebe o pedido no painel em tempo real.
         </p>
-        <div className="preview-grid">
+        <div className="preview-single">
           <div className="preview-card">
-            <div className="preview-card-label">Cardápio Digital</div>
+            <div className="preview-card-label">Cardápio Digital — Exemplo real</div>
             <img
-              src="/img-cardapio.jpg"
-              alt="Cardápio digital da loja Anaçai no LanchoNet"
+              src="https://i.imgur.com/oN97xnw.png"
+              alt="Cardápio digital de uma loja no LanchoNet"
               className="preview-img"
             />
-            <p className="preview-desc">Cada loja tem seu próprio link. Clientes pedem pelo celular, sem baixar nenhum app.</p>
-          </div>
-          <div className="preview-card">
-            <div className="preview-card-label">Confirmação no WhatsApp</div>
-            <img
-              src="/img-whatsapp.jpg"
-              alt="Pedido confirmado sendo enviado pelo WhatsApp"
-              className="preview-img"
-            />
-            <p className="preview-desc">Assim que o pedido é feito, o cliente recebe a confirmação completa com detalhes e previsão de entrega.</p>
+            <p className="preview-desc">
+              Cada loja tem seu próprio link personalizado. O cliente acessa, escolhe os produtos e finaliza o pedido diretamente pelo celular — sem baixar nenhum aplicativo.
+            </p>
           </div>
         </div>
       </section>
@@ -127,18 +120,18 @@ export default function LandingPage() {
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FiDollarSign /></div>
-            <h3>PIX Automatizado</h3>
-            <p>QR Code exclusivo por pedido. O sistema confirma o pagamento automaticamente, sem precisar verificar comprovante.</p>
+            <h3>PIX via AbacatePay</h3>
+            <p>QR Code exclusivo por pedido gerado pela AbacatePay. O sistema reconhece e confirma o pagamento automaticamente. (Taxas da AbacatePay se aplicam.)</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FiMonitor /></div>
             <h3>Painel em Tempo Real</h3>
-            <p>Você recebe um alerta sonoro a cada novo pedido. Gerencie e avance os status direto no painel.</p>
+            <p>Receba um alerta sonoro a cada novo pedido. Gerencie e avance os status direto no painel administrativo.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FiMessageCircle /></div>
-            <h3>Confirmação no WhatsApp</h3>
-            <p>Cliente recebe os detalhes do pedido pelo WhatsApp automaticamente. Pode acompanhar o status pelo link.</p>
+            <h3>Acompanhamento de Pedido</h3>
+            <p>O cliente acompanha o status do pedido pelo link da loja e tem acesso rápido ao WhatsApp do estabelecimento.</p>
           </div>
         </div>
       </section>
@@ -148,7 +141,7 @@ export default function LandingPage() {
         <div className="preview-label">Planos</div>
         <h2 className="section-title">Preço justo, sem surpresas</h2>
         <p className="section-subtitle">
-          Uma mensalidade fixa. Chega de perder 15–20% de cada pedido nos apps de delivery!
+          Pague uma mensalidade fixa à LanchoNet. Sem comissão por pedido para nós — a única taxa que incide é da <strong>AbacatePay</strong> no processamento do PIX.
         </p>
 
         <div className="pricing-grid">

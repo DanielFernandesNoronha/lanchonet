@@ -258,6 +258,17 @@
   text-align: center;
 }
 
+/* Preview single */
+.preview-single {
+  display: flex;
+  justify-content: center;
+}
+
+.preview-single .preview-card {
+  max-width: 380px;
+  width: 100%;
+}
+
 .preview-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -294,7 +305,7 @@
   width: 100%;
   display: block;
   object-fit: cover;
-  max-height: 420px;
+  max-height: 480px;
 }
 
 .preview-desc {
@@ -517,27 +528,42 @@
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
-  .features-grid { grid-template-columns: repeat(2, 1fr); }
   .hero-section {
     grid-template-columns: 1fr;
     min-height: auto;
     padding: 140px 0 80px;
     text-align: center;
   }
-  .hero-subtitle { margin: 0 auto 36px; }
+  .hero-subtitle { max-width: 100%; margin: 0 auto 36px; }
+  .hero-eyebrow { margin: 0 auto 28px; }
   .hero-cta-row { justify-content: center; }
   .hero-stats { max-width: 420px; margin: 0 auto; }
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
   .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin-top: 60px; }
   .pricing-card.popular { transform: none; }
-  .preview-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
 }
 
 @media (max-width: 768px) {
   .landing-nav-links { display: none; }
+  .landing-nav-actions .btn-ghost { display: none; }
+  .hero-title { font-size: 2rem; }
+  .section-title { font-size: 1.7rem; }
   .features-grid { grid-template-columns: 1fr; }
-  .hero-title { font-size: 2.2rem; }
-  .section-title { font-size: 1.8rem; }
+  .hero-stats { grid-template-columns: 1fr 1fr; }
+  .stat-card { padding: 20px 16px; }
+  .stat-number { font-size: 1.8rem; }
+  .cta-final h2 { font-size: 1.7rem; }
+  .cta-final-btns { flex-direction: column; align-items: center; }
   .footer-grid { grid-template-columns: 1fr; text-align: center; }
   .footer-brand p { margin: 0 auto; }
   .lp-container { padding: 0 20px; }
+  .pricing-card { padding: 28px 20px; }
+  .preview-single .preview-card { max-width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .hero-title { font-size: 1.8rem; }
+  .hero-stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .lp-nav-inner { gap: 12px; }
+  .btn-lg { padding: 12px 20px; font-size: 0.9rem; }
 }
