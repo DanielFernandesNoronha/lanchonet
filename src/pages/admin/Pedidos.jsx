@@ -801,7 +801,7 @@ export default function Pedidos() {
       {showManualTimersModal && (
         <div className="modal-overlay">
           <div className="confirm-modal-card slide-up">
-            <h3 className="confirm-modal-title" style={{ textAlign: 'left', marginBottom: 16 }}>⏱️ Definir Tempo Manual</h3>
+            <h3 className="confirm-modal-title" style={{ textAlign: 'left', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><FiClock /> Definir Tempo Manual</h3>
             <p className="confirm-modal-message" style={{ textAlign: 'left', marginBottom: 24 }}>
               Como os timers automáticos estão sendo desativados, você precisa definir uma previsão fixa para mostrar aos clientes.
             </p>
