@@ -56,8 +56,8 @@ export default function LandingPage() {
         
         <div className="hero-visual slide-up" style={{ animationDelay: '0.2s' }}>
           <div className="hero-images-showcase">
-            <img src="/img-cardapio.jpg" alt="Exemplo do Cardápio LanchoNet" className="showcase-img back-img" />
-            <img src="/img-whatsapp.jpg" alt="Confirmação de Pedido no WhatsApp" className="showcase-img front-img" />
+            <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=800&fit=crop&q=80" alt="Exemplo do Cardápio LanchoNet" className="showcase-img back-img" />
+            <img src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=500&h=700&fit=crop&q=80" alt="Confirmação de Pedido no WhatsApp" className="showcase-img front-img" />
           </div>
         </div>
       </section>
