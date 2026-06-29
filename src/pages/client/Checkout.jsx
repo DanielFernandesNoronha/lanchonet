@@ -135,7 +135,7 @@ export default function Checkout() {
 
   // Auth Functions
   async function handleLogin() {
-    if (!whatsapp || !senha) return toast.error('Preencha WhatsApp e senha');
+    if (!whatsapp) return toast.error('Preencha seu WhatsApp');
     if (isNovoCadastro && !nome) return toast.error('Por favor, informe seu nome');
     setEnviando(true);
     
@@ -147,49 +147,30 @@ export default function Checkout() {
       .single();
       
     if (cliente) {
-      if (cliente.senha_hash === senha) {
-        setClienteLogado(cliente);
-        localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente));
-        if (cliente.endereco) {
-          try {
-            const endSaved = JSON.parse(cliente.endereco);
-            setEndereco(endSaved);
-            if (endSaved.bairro_id) handleBairroChange(endSaved.bairro_id);
-          } catch(e) {}
-        }
-        toast.success('Login com sucesso!');
-        setStep(3);
-      } else {
-        toast.error('Senha incorreta. Verifique e tente novamente.');
-        // Aviso no WhatsApp - sem expor a senha!
+      setClienteLogado(cliente);
+      localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente));
+      if (cliente.endereco) {
         try {
-          const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
-          fetch('/webhook/whatsapp-status-update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              lojista_id: lojistaId,
-              telefone: numeroWpp,
-              mensagem: `🔐 *Aviso de Segurança*\n\nIdentificamos uma tentativa de login com senha incorreta no cardápio.\n\nSe não foi você, pode ignorar esta mensagem. Caso tenha esquecido sua senha, entre em contato com o restaurante.`
-            })
-          }).catch(e => console.error(e));
-        } catch (e) {
-          console.error(e);
-        }
+          const endSaved = JSON.parse(cliente.endereco);
+          setEndereco(endSaved);
+          if (endSaved.bairro_id) handleBairroChange(endSaved.bairro_id);
+        } catch(e) {}
       }
+      toast.success(`Bem-vindo, ${cliente.nome || 'cliente'}!`);
+      setStep(3);
     } else {
       // Register
       const { data: novoCli, error } = await supabase.from('clientes')
-        .insert({ lojista_id: lojistaId, whatsapp, senha_hash: senha, nome: nome })
+        .insert({ lojista_id: lojistaId, whatsapp, senha_hash: 'na', nome: nome })
         .select('*')
         .single();
       
       if (error) {
-        toast.error('Erro ao registrar. Você já executou o SQL no Supabase?');
+        toast.error(`Erro ao registrar: ${error.message || error.details}`);
       } else {
         setClienteLogado(novoCli);
         localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(novoCli));
-        toast.success('Cadastro rápido concluído!');
+        toast.success('Pronto!');
         setStep(3);
       }
     }
@@ -564,23 +545,19 @@ export default function Checkout() {
                 </div>
               ) : (
                 <div className="form-grid">
-                  <p style={{ gridColumn: '1/-1', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Digite seu WhatsApp e crie uma senha (ou use sua senha existente).</p>
+                  <p style={{ gridColumn: '1/-1', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Digite seu WhatsApp para continuar.</p>
                   <div className="input-group">
                     <label>WhatsApp (DDD + Número)</label>
                     <input className="input" placeholder="Ex: 11999999999" value={whatsapp} onChange={e => setWhatsapp(e.target.value.replace(/\D/g, ''))} />
                   </div>
                   {isNovoCadastro && (
                     <div className="input-group">
-                      <label>Nome Completo</label>
+                      <label>Confirme seu Nome</label>
                       <input className="input" placeholder="Ex: João Silva" value={nome} onChange={e => setNome(e.target.value)} />
                     </div>
                   )}
-                  <div className="input-group">
-                    <label>Senha</label>
-                    <input className="input" type="password" placeholder="Sua senha" value={senha} onChange={e => setSenha(e.target.value)} />
-                  </div>
-                  <button className="btn btn-primary btn-lg" onClick={handleLogin} disabled={enviando} style={{ gridColumn: '1/-1', marginTop: 8 }}>
-                    {enviando ? 'Verificando...' : 'Entrar / Cadastrar'}
+                  <button className="btn btn-primary btn-lg" onClick={handleLogin} disabled={enviando || whatsapp.length < 10} style={{ gridColumn: '1/-1', marginTop: 8 }}>
+                    {enviando ? 'Verificando...' : 'Continuar'}
                   </button>
                 </div>
               )}
