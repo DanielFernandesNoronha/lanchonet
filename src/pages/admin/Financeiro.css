@@ -1,7 +1,9 @@
 /* ===== FINANCEIRO PAGE ===== */
 
 .financeiro-page {
-  max-width: 860px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 /* Section titles */

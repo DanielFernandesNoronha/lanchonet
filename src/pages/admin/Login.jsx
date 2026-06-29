@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiMail, FiLock, FiUser, FiLink, FiEye, FiEyeOff } from 'react-icons/fi';
+import { supabase } from '../../lib/supabase';
+import { FiMail, FiLock, FiUser, FiLink, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import MenuLogo from '../../assets/MENU.svg';
 import './Login.css';
@@ -15,7 +16,19 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [nomeRestaurante, setNomeRestaurante] = useState('');
   const [slug, setSlug] = useState('');
+  const [planos, setPlanos] = useState([]);
+  const [planoSelecionado, setPlanoSelecionado] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.from('planos').select('*').eq('ativo', true).order('valor_mensal', { ascending: true })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setPlanos(data);
+          setPlanoSelecionado(data[0].id);
+        }
+      });
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -26,7 +39,7 @@ export default function Login() {
         toast.success('Bem-vindo!');
         navigate('/admin');
       } else {
-        await register(email, senha, nomeRestaurante, slug);
+        await register(email, senha, nomeRestaurante, slug, planoSelecionado);
         toast.success('Conta criada! Por favor, termine de configurar seu restaurante.');
         navigate('/admin/config'); // Redireciona para configurações
       }
@@ -62,6 +75,39 @@ export default function Login() {
                   <input className="input" type="text" placeholder="meu-restaurante" value={slug} onChange={e => setSlug(e.target.value)} required />
                 </div>
               </div>
+
+              {planos.length > 0 && (
+                <div className="input-group" style={{ marginBottom: '20px' }}>
+                  <label>Escolha o seu plano</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {planos.map(plano => (
+                      <div 
+                        key={plano.id} 
+                        onClick={() => setPlanoSelecionado(plano.id)}
+                        style={{ 
+                          padding: '12px 16px', 
+                          border: planoSelecionado === plano.id ? '2px solid var(--accent)' : '1px solid var(--border)', 
+                          borderRadius: '8px', 
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          background: planoSelecionado === plano.id ? 'rgba(249, 115, 22, 0.05)' : 'transparent'
+                        }}
+                      >
+                        <div>
+                          <strong style={{ display: 'block', color: 'var(--text-primary)' }}>{plano.nome}</strong>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{plano.descricao}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <strong style={{ color: 'var(--accent)' }}>R$ {parseFloat(plano.valor_mensal).toFixed(2)}/mês</strong>
+                          {planoSelecionado === plano.id && <FiCheckCircle color="var(--accent)" />}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
 
