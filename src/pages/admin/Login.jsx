@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { FiMail, FiLock, FiUser, FiLink, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi';
@@ -10,7 +10,13 @@ import './Login.css';
 export default function Login() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const [isLogin, setIsLogin] = useState(() => {
+    if (location.state?.mode === 'register') {
+      return false;
+    }
+    return true;
+  });
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -19,6 +25,14 @@ export default function Login() {
   const [planos, setPlanos] = useState([]);
   const [planoSelecionado, setPlanoSelecionado] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.mode === 'register') {
+      setIsLogin(false);
+    } else if (location.state?.mode === 'login') {
+      setIsLogin(true);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     supabase.from('planos').select('*').eq('ativo', true).order('valor_mensal', { ascending: true })
