@@ -57,7 +57,7 @@ export default function Checkout() {
         setLojistaId(loj.id);
         setLojistaObj(loj);
         if (loj.logo_url) {
-          localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
+          try { localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url); } catch(e) {}
           setCachedLogo(loj.logo_url);
         }
         
@@ -152,7 +152,7 @@ export default function Checkout() {
       
     if (cliente) {
       setClienteLogado(cliente);
-      localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente));
+      try { localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente)); } catch(e) {}
       if (cliente.endereco) {
         try {
           const endSaved = JSON.parse(cliente.endereco);
@@ -175,7 +175,7 @@ export default function Checkout() {
         toast.error(`Erro ao registrar: ${error.message || error.details}`);
       } else {
         setClienteLogado(novoCli);
-        localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(novoCli));
+        try { localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(novoCli)); } catch(e) {}
         toast.success('Pronto!');
         setStep(3);
       }

@@ -32,7 +32,9 @@ export default function MeusPedidos() {
           lojData = loj;
           setLojista(loj);
           if (loj.logo_url) {
-            localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
+            try {
+              localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
+            } catch(e) {}
             setCachedLogo(loj.logo_url);
           }
           if (loj.nome) document.title = `Meus Pedidos | ${loj.nome}`;
@@ -42,7 +44,12 @@ export default function MeusPedidos() {
       }
       
       // Check local storage for persistent login
-      const savedClient = localStorage.getItem(`lanchonet_client_${slug}`);
+      let savedClient = null;
+      try {
+        savedClient = localStorage.getItem(`lanchonet_client_${slug}`);
+      } catch (e) {
+        console.warn("localStorage blockeado no in-app browser");
+      }
       if (savedClient) {
         const parsed = JSON.parse(savedClient);
         setClienteLogado(parsed);
@@ -116,7 +123,7 @@ export default function MeusPedidos() {
       
     if (cliente) {
       setClienteLogado(cliente);
-      localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente));
+      try { localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente)); } catch(e) {}
       toast.success('Pedidos carregados!');
       loadPedidos(cliente.id);
     } else {
@@ -128,7 +135,7 @@ export default function MeusPedidos() {
   const handleLogout = () => {
     setClienteLogado(null);
     setPedidos([]);
-    localStorage.removeItem(`lanchonet_client_${slug}`);
+    try { localStorage.removeItem(`lanchonet_client_${slug}`); } catch(e) {}
   };
 
   // Funções auxiliares para status

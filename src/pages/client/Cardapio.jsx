@@ -31,7 +31,7 @@ export default function Cardapio() {
       if (!loj) { toast.error('Restaurante não encontrado'); return; }
       setLojista(loj);
       if (loj?.logo_url) {
-        localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
+        try { localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url); } catch(e) {}
         setCachedLogo(loj.logo_url);
       }
       
