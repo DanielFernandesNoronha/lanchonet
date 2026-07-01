@@ -21,7 +21,6 @@ export default function MeusPedidos() {
   
   // Auth state
   const [whatsapp, setWhatsapp] = useState('');
-  const [senha, setSenha] = useState('');
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
@@ -95,7 +94,7 @@ export default function MeusPedidos() {
   }, [clienteLogado]);
 
   const handleLogin = async () => {
-    if (!whatsapp || !senha) return toast.error('Preencha WhatsApp e senha');
+    if (!whatsapp) return toast.error('Preencha o WhatsApp');
     setEnviando(true);
     
     const { data: clienteBasico } = await supabase.rpc('get_cliente_by_phone', {
@@ -109,13 +108,13 @@ export default function MeusPedidos() {
        cliente = clienteFull;
     }
       
-    if (cliente && cliente.senha_hash === senha) {
+    if (cliente) {
       setClienteLogado(cliente);
       localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente));
-      toast.success('Login com sucesso!');
+      toast.success('Pedidos carregados!');
       loadPedidos(cliente.id);
     } else {
-      toast.error('WhatsApp ou senha incorretos.');
+      toast.error('Nenhum pedido encontrado para este número.');
     }
     setEnviando(false);
   };
@@ -234,10 +233,10 @@ export default function MeusPedidos() {
             </div>
             <h2 style={{ marginBottom: '8px', fontSize: '1.4rem', fontWeight: 800 }}>Acompanhar Pedidos</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '0.95rem', lineHeight: 1.5 }}>
-              Para sua segurança, informe o <strong>WhatsApp</strong> e a <strong>senha</strong> que você criou na hora do pedido.
+              Informe o <strong>WhatsApp</strong> que você usou na hora de fazer o pedido.
             </p>
             
-            <div className="input-group" style={{ textAlign: 'left', marginBottom: '20px' }}>
+            <div className="input-group" style={{ textAlign: 'left', marginBottom: '32px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiPhone size={14}/> WhatsApp</label>
               <input 
                 className="input" 
@@ -245,18 +244,6 @@ export default function MeusPedidos() {
                 value={whatsapp} 
                 onChange={e => setWhatsapp(e.target.value.replace(/\D/g, ''))} 
                 style={{ fontSize: '1.05rem', padding: '14px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
-              />
-            </div>
-            
-            <div className="input-group" style={{ textAlign: 'left', marginBottom: '32px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiLock size={14}/> Senha</label>
-              <input 
-                className="input" 
-                type="password" 
-                placeholder="••••••••" 
-                value={senha} 
-                onChange={e => setSenha(e.target.value)} 
-                style={{ fontSize: '1.05rem', padding: '14px 16px', letterSpacing: '2px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
               />
             </div>
             

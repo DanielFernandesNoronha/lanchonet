@@ -26,7 +26,6 @@ export default function Checkout() {
   
   // Auth state
   const [whatsapp, setWhatsapp] = useState('');
-  const [senha, setSenha] = useState('');
   const [nome, setNome] = useState('');
   const [isNovoCadastro, setIsNovoCadastro] = useState(false);
   const [clienteLogado, setClienteLogado] = useState(null);
