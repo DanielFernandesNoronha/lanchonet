@@ -52,7 +52,10 @@ export function AuthProvider({ children }) {
   }
 
   async function register(email, password, nomeRestaurante, slug, planoId) {
-    if (password.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres');
+    if (password.length < 8) throw new Error('A senha deve ter pelo menos 8 caracteres');
+    if (!/[A-Z]/.test(password)) throw new Error('A senha deve conter pelo menos uma letra maiúscula');
+    if (!/[0-9]/.test(password)) throw new Error('A senha deve conter pelo menos um número');
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) throw new Error('A senha deve conter pelo menos um caractere especial (!@#$ etc)');
     
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw new Error(error.message);
@@ -77,6 +80,17 @@ export function AuthProvider({ children }) {
       
       // Busca o lojista para preencher o state IMEDIATAMENTE antes de navegar
       await fetchLojista(userId);
+      
+      // Dispara webhook para o n8n para enviar o email de confirmação/boas-vindas
+      try {
+        await fetch('/webhook/novo-cadastro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, nome: nomeRestaurante, slug })
+        });
+      } catch (e) {
+        console.error('Erro ao notificar n8n:', e);
+      }
     }
   }
 
