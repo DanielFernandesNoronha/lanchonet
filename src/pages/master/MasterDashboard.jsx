@@ -92,12 +92,8 @@ export default function MasterDashboard() {
 
     setAtualizando(lojaId);
     try {
-      // Exclusão manual em cascata no frontend para garantir limpeza (caso falte restrição ON DELETE CASCADE no BD)
-      await supabase.from('pedidos').delete().eq('lojista_id', lojaId);
-      await supabase.from('produtos').delete().eq('lojista_id', lojaId);
-      await supabase.from('categorias').delete().eq('lojista_id', lojaId);
-      await supabase.from('adicionais').delete().eq('lojista_id', lojaId);
-
+      // O banco de dados foi configurado com ON DELETE CASCADE.
+      // Basta deletar o lojista e todo o resto (pedidos, clientes, etc) some automaticamente.
       const { data, error } = await supabase
         .from('lojistas')
         .delete()
