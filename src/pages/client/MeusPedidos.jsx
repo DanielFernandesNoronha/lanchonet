@@ -183,7 +183,7 @@ export default function MeusPedidos() {
   }
 
   return (
-    <div className="meus-pedidos-page fade-in" style={whiteLabelStyles}>
+    <div className="meus-pedidos-page" style={whiteLabelStyles}>
       <header className="meus-pedidos-header" style={{
         background: lojista?.capa_url 
           ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${lojista.capa_url}) center/cover no-repeat` 

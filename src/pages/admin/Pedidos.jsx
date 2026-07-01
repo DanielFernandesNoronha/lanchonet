@@ -28,6 +28,43 @@ export default function Pedidos() {
   const [manualTimeEntrega, setManualTimeEntrega] = useState('');
   const [manualTimeRetirada, setManualTimeRetirada] = useState('');
 
+  const tocarSomCampainha = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const now = ctx.currentTime;
+      
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now); 
+      gain1.gain.setValueAtTime(0, now);
+      gain1.gain.linearRampToValueAtTime(1, now + 0.05);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.4);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(659.25, now + 0.3); 
+      gain2.gain.setValueAtTime(0, now + 0.3);
+      gain2.gain.linearRampToValueAtTime(1, now + 0.35);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.3);
+      osc2.stop(now + 0.8);
+    } catch(e) {
+      console.error('Erro ao tocar som:', e);
+    }
+  };
+
   // Load pedidos + produtos + bairros
   useEffect(() => {
     if (!lojista) return;
@@ -53,20 +90,7 @@ export default function Pedidos() {
         if (payload.eventType === 'INSERT') {
           setPedidos(prev => [payload.new, ...prev]);
           toast.success('Novo pedido recebido!', { duration: 5000 });
-          try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, ctx.currentTime); // Tom alto (Lá agudo)
-            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3); // Queda de tom
-            gain.gain.setValueAtTime(0.5, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.3);
-          } catch(e) {}
+          tocarSomCampainha();
         }
         if (payload.eventType === 'UPDATE') {
           setPedidos(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p));
@@ -425,6 +449,13 @@ export default function Pedidos() {
 
         {/* Right: action buttons */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' }}>
+          <button
+            onClick={tocarSomCampainha}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+            title="Testar e habilitar som de notificação"
+          >
+            🔊 Testar Som
+          </button>
           <button
             onClick={toggleTimers}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: lojista?.pausar_timers ? 'var(--red-glow)' : 'var(--blue-glow)', color: lojista?.pausar_timers ? 'var(--red)' : 'var(--blue)', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
