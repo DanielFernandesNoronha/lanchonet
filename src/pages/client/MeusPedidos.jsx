@@ -27,7 +27,8 @@ export default function MeusPedidos() {
     async function initData() {
       let lojData = null;
       try {
-        const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao').eq('slug', slug).single();
+        const safeSlug = slug ? slug.toLowerCase() : '';
+        const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao').eq('slug', safeSlug).single();
         if (loj) {
           lojData = loj;
           setLojista(loj);
@@ -43,18 +44,23 @@ export default function MeusPedidos() {
         console.error("Erro ao carregar lojista", e);
       }
       
-      // Check local storage for persistent login
-      let savedClient = null;
       try {
-        savedClient = localStorage.getItem(`lanchonet_client_${slug}`);
-      } catch (e) {
-        console.warn("localStorage blockeado no in-app browser");
-      }
-      if (savedClient) {
-        const parsed = JSON.parse(savedClient);
-        setClienteLogado(parsed);
-        await loadPedidos(parsed.id);
-      } else {
+        // Check local storage for persistent login
+        let savedClient = null;
+        try {
+          savedClient = localStorage.getItem(`lanchonet_client_${slug}`);
+        } catch (e) {
+          console.warn("localStorage blockeado no in-app browser");
+        }
+        if (savedClient) {
+          const parsed = JSON.parse(savedClient);
+          setClienteLogado(parsed);
+          await loadPedidos(parsed.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Erro no initData", err);
         setLoading(false);
       }
     }

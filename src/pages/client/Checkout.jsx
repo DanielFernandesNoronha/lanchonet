@@ -52,37 +52,48 @@ export default function Checkout() {
 
   useEffect(() => {
     async function loadLojista() {
-      const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido, tempo_manual_entrega, tempo_manual_retirada').eq('slug', slug).single();
-      if (loj) {
-        setLojistaId(loj.id);
-        setLojistaObj(loj);
-        if (loj.logo_url) {
-          try { localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url); } catch(e) {}
-          setCachedLogo(loj.logo_url);
+      try {
+        const safeSlug = slug ? slug.toLowerCase() : '';
+        const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido, tempo_manual_entrega, tempo_manual_retirada').eq('slug', safeSlug).single();
+        if (!loj) {
+          toast.error('Restaurante não encontrado');
+          return;
         }
-        
-        // Atualiza o título da aba e o favicon
-        if (loj.nome) document.title = `Checkout | ${loj.nome}`;
-        if (loj.logo_url) {
-          let link = document.querySelector("link[rel~='icon']");
-          if (!link) {
-            link = document.createElement('link');
-            link.rel = 'icon';
-            document.head.appendChild(link);
+        if (loj) {
+          setLojistaId(loj.id);
+          setLojistaObj(loj);
+          if (loj.logo_url) {
+            try { localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url); } catch(e) {}
+            setCachedLogo(loj.logo_url);
           }
-          link.href = loj.logo_url;
-        }
+          
+          // Atualiza o título da aba e o favicon
+          if (loj.nome) document.title = `Checkout | ${loj.nome}`;
+          if (loj.logo_url) {
+            let link = document.querySelector("link[rel~='icon']");
+            if (!link) {
+              link = document.createElement('link');
+              link.rel = 'icon';
+              document.head.appendChild(link);
+            }
+            link.href = loj.logo_url;
+          }
 
-        const { data: b } = await supabase.from('taxas_entrega').select('*').eq('lojista_id', loj.id);
-        setBairros(b || []);
+          const { data: b } = await supabase.from('taxas_entrega').select('*').eq('lojista_id', loj.id);
+          setBairros(b || []);
 
-        const { data: db } = await supabase.from('dados_bancarios_lojista').select('id').eq('lojista_id', loj.id).maybeSingle();
-        setTemPix(!!db);
-        if (!db) {
-          setFormaPagamento('DINHEIRO');
+          const { data: db } = await supabase.from('dados_bancarios_lojista').select('id').eq('lojista_id', loj.id).maybeSingle();
+          setTemPix(!!db);
+          if (!db) {
+            setFormaPagamento('DINHEIRO');
+          }
         }
+      } catch (err) {
+        console.error("Erro crítico no loadLojista Checkout", err);
+        toast.error("Erro ao carregar Checkout");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     loadLojista();
   }, [slug]);

@@ -27,45 +27,56 @@ export default function Cardapio() {
 
   useEffect(() => {
     async function load() {
-      const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido').eq('slug', slug).single();
-      if (!loj) { toast.error('Restaurante não encontrado'); return; }
-      setLojista(loj);
-      if (loj?.logo_url) {
-        try { localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url); } catch(e) {}
-        setCachedLogo(loj.logo_url);
-      }
-      
-      // Atualiza o título da aba e o favicon
-      if (loj.nome) document.title = loj.nome;
-      if (loj.logo_url) {
-        let link = document.querySelector("link[rel~='icon']");
-        if (!link) {
-          link = document.createElement('link');
-          link.rel = 'icon';
-          document.head.appendChild(link);
+      try {
+        const safeSlug = slug ? slug.toLowerCase() : '';
+        const { data: loj, error: errLoj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido').eq('slug', safeSlug).single();
+        if (!loj || errLoj) { 
+          toast.error('Restaurante não encontrado'); 
+          setLoading(false);
+          return; 
         }
-        link.href = loj.logo_url;
+        setLojista(loj);
+        if (loj?.logo_url) {
+          try { localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url); } catch(e) {}
+          setCachedLogo(loj.logo_url);
+        }
+        
+        // Atualiza o título da aba e o favicon
+        if (loj.nome) document.title = loj.nome;
+        if (loj.logo_url) {
+          let link = document.querySelector("link[rel~='icon']");
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = 'icon';
+            document.head.appendChild(link);
+          }
+          link.href = loj.logo_url;
+        }
+
+        const { data: cats } = await supabase.from('categorias').select('*').eq('lojista_id', loj.id).order('ordem');
+        setCategorias(cats || []);
+
+        const { data: prods } = await supabase.from('produtos')
+          .select('*, produto_adicionais(adicionais(*))')
+          .eq('lojista_id', loj.id)
+          .eq('disponivel', true)
+          .order('nome');
+        
+        // Clean up the nested adicionais structure for easier use
+        const prodsFormatted = (prods || []).map(p => ({
+          ...p,
+          adicionaisDisponiveis: (p.produto_adicionais || [])
+            .map(pa => pa.adicionais)
+            .filter(ad => ad && ad.ativo)
+        }));
+
+        setProdutos(prodsFormatted);
+      } catch (err) {
+        console.error("Erro critico no load", err);
+        toast.error("Erro ao carregar cardápio");
+      } finally {
+        setLoading(false);
       }
-
-      const { data: cats } = await supabase.from('categorias').select('*').eq('lojista_id', loj.id).order('ordem');
-      setCategorias(cats || []);
-
-      const { data: prods } = await supabase.from('produtos')
-        .select('*, produto_adicionais(adicionais(*))')
-        .eq('lojista_id', loj.id)
-        .eq('disponivel', true)
-        .order('nome');
-      
-      // Clean up the nested adicionais structure for easier use
-      const prodsFormatted = (prods || []).map(p => ({
-        ...p,
-        adicionaisDisponiveis: (p.produto_adicionais || [])
-          .map(pa => pa.adicionais)
-          .filter(ad => ad && ad.ativo)
-      }));
-
-      setProdutos(prodsFormatted);
-      setLoading(false);
     }
     load();
   }, [slug]);
