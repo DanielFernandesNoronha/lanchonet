@@ -24,28 +24,34 @@ export default function MeusPedidos() {
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    async function loadLojista() {
-      const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao').eq('slug', slug).single();
-      if (loj) {
-        setLojista(loj);
-        if (loj.logo_url) {
-          localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
-          setCachedLogo(loj.logo_url);
+    async function initData() {
+      let lojData = null;
+      try {
+        const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao').eq('slug', slug).single();
+        if (loj) {
+          lojData = loj;
+          setLojista(loj);
+          if (loj.logo_url) {
+            localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url);
+            setCachedLogo(loj.logo_url);
+          }
+          if (loj.nome) document.title = `Meus Pedidos | ${loj.nome}`;
         }
-        if (loj.nome) document.title = `Meus Pedidos | ${loj.nome}`;
+      } catch (e) {
+        console.error("Erro ao carregar lojista", e);
+      }
+      
+      // Check local storage for persistent login
+      const savedClient = localStorage.getItem(`lanchonet_client_${slug}`);
+      if (savedClient) {
+        const parsed = JSON.parse(savedClient);
+        setClienteLogado(parsed);
+        await loadPedidos(parsed.id);
+      } else {
+        setLoading(false);
       }
     }
-    loadLojista();
-    
-    // Check local storage for persistent login
-    const savedClient = localStorage.getItem(`lanchonet_client_${slug}`);
-    if (savedClient) {
-      const parsed = JSON.parse(savedClient);
-      setClienteLogado(parsed);
-      loadPedidos(parsed.id);
-    } else {
-      setLoading(false);
-    }
+    initData();
   }, [slug]);
 
   const loadPedidos = async (clienteId) => {
@@ -167,9 +173,10 @@ export default function MeusPedidos() {
   if (loading) {
     return (
       <div style={{
+        ...whiteLabelStyles,
         position: 'fixed',
         inset: 0,
-        background: '#ffffff',
+        background: 'var(--bg-page, #ffffff)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -179,9 +186,9 @@ export default function MeusPedidos() {
         {cachedLogo ? (
           <img src={cachedLogo} alt="Logo" style={{ width: 100, height: 100, borderRadius: '50%', marginBottom: 20, objectFit: 'contain', animation: 'pulse 1.5s infinite ease-in-out' }} />
         ) : (
-          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid var(--accent, #f97316)', animation: 'spin 1s linear infinite', marginBottom: 20 }} />
+          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '4px solid rgba(128,128,128,0.2)', borderTop: '4px solid var(--accent, #f97316)', animation: 'spin 1s linear infinite', marginBottom: 20 }} />
         )}
-        <h2 style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: 600 }}>Carregando...</h2>
+        <h2 style={{ fontSize: '1.2rem', color: 'var(--text-primary, #0f172a)', fontWeight: 600 }}>Carregando...</h2>
       </div>
     );
   }
