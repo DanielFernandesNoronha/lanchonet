@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { FiArrowLeft, FiClock, FiCheckCircle, FiTruck, FiPackage, FiLogOut, FiList, FiShoppingCart, FiShoppingBag } from 'react-icons/fi';
+import { FiArrowLeft, FiClock, FiCheckCircle, FiTruck, FiPackage, FiLogOut, FiList, FiShoppingCart, FiShoppingBag, FiLock, FiPhone } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useCart } from '../../contexts/CartContext';
 import './MeusPedidos.css';
@@ -151,13 +151,18 @@ export default function MeusPedidos() {
   const whiteLabelStyles = lojista ? {
     '--bg-primary': lojista.cor_secundaria || '#f8fafc',
     '--bg-page': lojista.cor_secundaria || '#f8fafc',
+    '--bg-secondary': '#ffffff',
     '--bg-card': lojista.cor_fundo_cards || '#ffffff',
+    '--bg-card-hover': lojista.cor_fundo_cards || '#ffffff',
     '--header-bg': lojista.cor_secundaria || '#111827',
     '--primary': lojista.cor_principal || '#f97316',
     '--accent': lojista.cor_principal || '#f97316',
+    '--accent-dark': lojista.cor_principal || '#ea580c',
     '--text-primary': lojista.cor_texto_normal || '#0f172a',
     '--text-secondary': lojista.cor_texto_secundaria || '#64748b',
+    '--text-muted': '#94a3b8',
     '--border': 'rgba(128, 128, 128, 0.2)',
+    '--border-hover': 'rgba(128, 128, 128, 0.3)',
   } : {};
 
   if (loading) {
@@ -220,29 +225,38 @@ export default function MeusPedidos() {
       <div className="container">
         {!clienteLogado ? (
           <div className="login-section slide-up">
-            <h2 style={{ marginBottom: '8px' }}>Acompanhar Pedidos</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
-              Entre com os dados usados no momento do pedido.
+            <div style={{
+              width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(249, 115, 22, 0.1)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto',
+              color: 'var(--accent)'
+            }}>
+              <FiLock size={26} />
+            </div>
+            <h2 style={{ marginBottom: '8px', fontSize: '1.4rem', fontWeight: 800 }}>Acompanhar Pedidos</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+              Para sua segurança, informe o <strong>WhatsApp</strong> e a <strong>senha</strong> que você criou na hora do pedido.
             </p>
             
-            <div className="input-group" style={{ textAlign: 'left', marginBottom: '16px' }}>
-              <label>WhatsApp</label>
+            <div className="input-group" style={{ textAlign: 'left', marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiPhone size={14}/> WhatsApp</label>
               <input 
                 className="input" 
-                placeholder="Apenas números" 
+                placeholder="(00) 00000-0000" 
                 value={whatsapp} 
                 onChange={e => setWhatsapp(e.target.value.replace(/\D/g, ''))} 
+                style={{ fontSize: '1.05rem', padding: '14px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
               />
             </div>
             
-            <div className="input-group" style={{ textAlign: 'left', marginBottom: '24px' }}>
-              <label>Senha</label>
+            <div className="input-group" style={{ textAlign: 'left', marginBottom: '32px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiLock size={14}/> Senha</label>
               <input 
                 className="input" 
                 type="password" 
-                placeholder="Sua senha" 
+                placeholder="••••••••" 
                 value={senha} 
                 onChange={e => setSenha(e.target.value)} 
+                style={{ fontSize: '1.05rem', padding: '14px 16px', letterSpacing: '2px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
               />
             </div>
             
@@ -250,8 +264,9 @@ export default function MeusPedidos() {
               className="btn btn-primary btn-full btn-lg" 
               onClick={handleLogin} 
               disabled={enviando}
+              style={{ padding: '16px', fontSize: '1rem', borderRadius: '12px', fontWeight: 700 }}
             >
-              {enviando ? 'Verificando...' : 'Acessar Meus Pedidos'}
+              {enviando ? 'Autenticando...' : 'Acessar Meus Pedidos'}
             </button>
           </div>
         ) : (
