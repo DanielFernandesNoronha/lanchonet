@@ -28,7 +28,7 @@ export default function Cardapio() {
   useEffect(() => {
     async function load() {
       try {
-        const safeSlug = slug ? slug.toLowerCase() : '';
+        const safeSlug = slug ? slug.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]/g, '') : '';
         const { data: loj, error: errLoj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido').eq('slug', safeSlug).single();
         if (!loj || errLoj) { 
           toast.error('Restaurante não encontrado'); 

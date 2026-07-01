@@ -27,7 +27,7 @@ export default function MeusPedidos() {
     async function initData() {
       let lojData = null;
       try {
-        const safeSlug = slug ? slug.toLowerCase() : '';
+        const safeSlug = slug ? slug.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]/g, '') : '';
         const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao').eq('slug', safeSlug).single();
         if (loj) {
           lojData = loj;

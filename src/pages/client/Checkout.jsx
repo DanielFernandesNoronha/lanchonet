@@ -53,7 +53,7 @@ export default function Checkout() {
   useEffect(() => {
     async function loadLojista() {
       try {
-        const safeSlug = slug ? slug.toLowerCase() : '';
+        const safeSlug = slug ? slug.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]/g, '') : '';
         const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido, tempo_manual_entrega, tempo_manual_retirada').eq('slug', safeSlug).single();
         if (!loj) {
           toast.error('Restaurante não encontrado');

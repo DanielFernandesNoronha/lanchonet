@@ -186,7 +186,7 @@ export default function Configuracoes() {
           </div>
           <div className="input-group">
             <label>Slug (URL do cardápio)</label>
-            <input className="input" value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })} placeholder="meu-restaurante" />
+            <input className="input" value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]/g, '') })} placeholder="meu-restaurante" />
             {form.slug && <small style={{ color: 'var(--text-muted)' }}>URL: lanchonet.shop/{form.slug}</small>}
           </div>
           <div className="input-group">
