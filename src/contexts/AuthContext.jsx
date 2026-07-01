@@ -36,7 +36,8 @@ export function AuthProvider({ children }) {
   }
 
   // --- Computed subscription values ---
-  const isBloqueado = lojista?.status_assinatura === 'atrasado';
+  const isBloqueado = lojista?.status_assinatura === 'atrasado' || 
+    (lojista?.status_assinatura === 'trial' && new Date() > new Date(lojista?.trial_expira_em));
 
   const diasRestantesTrial = useMemo(() => {
     if (!lojista?.trial_expira_em || lojista.status_assinatura !== 'trial') return null;
