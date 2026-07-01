@@ -1,9 +1,12 @@
 const N8N_BASE = import.meta.env.VITE_N8N_BASE_URL || '/webhook';
 
-export async function criarCobranca(lojistaId, carrinho, clienteDados) {
+export async function criarCobranca(lojistaId, carrinho, clienteDados, token = '') {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${N8N_BASE}/checkout`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       lojista_id: lojistaId,
       itens: carrinho,
@@ -14,46 +17,61 @@ export async function criarCobranca(lojistaId, carrinho, clienteDados) {
   return res.json();
 }
 
-export async function obterQRCodeWhatsApp(lojistaId) {
+export async function obterQRCodeWhatsApp(lojistaId, token = '') {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${N8N_BASE}/whatsapp-qr`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ lojista_id: lojistaId }),
   });
   return res.json();
 }
 
-export async function verificarStatusWhatsApp(lojistaId) {
+export async function verificarStatusWhatsApp(lojistaId, token = '') {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${N8N_BASE}/whatsapp-status`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ lojista_id: lojistaId }),
   });
   return res.json();
 }
 
-export async function desconectarWhatsApp(lojistaId) {
+export async function desconectarWhatsApp(lojistaId, token = '') {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${N8N_BASE}/whatsapp-logout`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ lojista_id: lojistaId }),
   });
   return res.json();
 }
 
-export async function obterNomeWhatsApp(lojistaId, number) {
+export async function obterNomeWhatsApp(lojistaId, number, token = '') {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${N8N_BASE}/whatsapp-profile-name`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ lojista_id: lojistaId, number }),
   });
   return res.json();
 }
 
-export async function gerarCobrancaMensalidade(lojistaId) {
+export async function gerarCobrancaMensalidade(lojistaId, token = '') {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${N8N_BASE}/saas-gerar-cobranca`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ lojista_id: lojistaId }),
   });
   return res.json();

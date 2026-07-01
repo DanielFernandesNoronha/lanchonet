@@ -26,7 +26,7 @@ export default function MeusPedidos() {
 
   useEffect(() => {
     async function loadLojista() {
-      const { data: loj } = await supabase.from('lojistas').select('*').eq('slug', slug).single();
+      const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao').eq('slug', slug).single();
       if (loj) {
         setLojista(loj);
         if (loj.logo_url) {
@@ -98,11 +98,16 @@ export default function MeusPedidos() {
     if (!whatsapp || !senha) return toast.error('Preencha WhatsApp e senha');
     setEnviando(true);
     
-    const { data: cliente } = await supabase.from('clientes')
-      .select('*')
-      .eq('lojista_id', lojista.id)
-      .eq('whatsapp', whatsapp)
-      .single();
+    const { data: clienteBasico } = await supabase.rpc('get_cliente_by_phone', {
+      p_telefone: whatsapp,
+      p_lojista_id: lojista.id
+    });
+    
+    let cliente = null;
+    if (clienteBasico) {
+       const { data: clienteFull } = await supabase.from('clientes').select('*').eq('id', clienteBasico.id).single();
+       cliente = clienteFull;
+    }
       
     if (cliente && cliente.senha_hash === senha) {
       setClienteLogado(cliente);

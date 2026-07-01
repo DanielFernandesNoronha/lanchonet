@@ -27,7 +27,7 @@ export default function Cardapio() {
 
   useEffect(() => {
     async function load() {
-      const { data: loj } = await supabase.from('lojistas').select('*').eq('slug', slug).single();
+      const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido').eq('slug', slug).single();
       if (!loj) { toast.error('Restaurante não encontrado'); return; }
       setLojista(loj);
       if (loj?.logo_url) {

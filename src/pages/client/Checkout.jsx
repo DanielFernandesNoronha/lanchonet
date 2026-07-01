@@ -53,7 +53,7 @@ export default function Checkout() {
 
   useEffect(() => {
     async function loadLojista() {
-      const { data: loj } = await supabase.from('lojistas').select('*').eq('slug', slug).single();
+      const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido, tempo_manual_entrega, tempo_manual_retirada').eq('slug', slug).single();
       if (loj) {
         setLojistaId(loj.id);
         setLojistaObj(loj);
@@ -112,16 +112,22 @@ export default function Checkout() {
           }
         } else {
           try {
-            const { data: cliFull } = await supabase.from('clientes')
-              .select('*')
-              .eq('id', data.id)
-              .single();
-            if (cliFull && (!cliFull.nome || cliFull.nome === '—' || cliFull.nome.trim() === '')) {
-              const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
-              const res = await obterNomeWhatsApp(lojistaId, numeroWpp);
-              const wppName = res?.name || res?.pushName;
-              if (wppName) {
-                await supabase.from('clientes').update({ nome: wppName }).eq('id', cliFull.id);
+            const { data: cliData } = await supabase.rpc('get_cliente_by_phone', { 
+              p_telefone: whatsapp, 
+              p_lojista_id: lojistaId 
+            });
+            if (cliData) {
+              const { data: cliFull } = await supabase.from('clientes')
+                .select('*')
+                .eq('id', cliData.id)
+                .single();
+              if (cliFull && (!cliFull.nome || cliFull.nome === '—' || cliFull.nome.trim() === '')) {
+                const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
+                const res = await obterNomeWhatsApp(lojistaId, numeroWpp);
+                const wppName = res?.name || res?.pushName;
+                if (wppName) {
+                  await supabase.from('clientes').update({ nome: wppName }).eq('id', cliFull.id);
+                }
               }
             }
           } catch (e) {}
@@ -140,11 +146,10 @@ export default function Checkout() {
     setEnviando(true);
     
     // Check if client exists
-    const { data: cliente } = await supabase.from('clientes')
-      .select('*')
-      .eq('lojista_id', lojistaId)
-      .eq('whatsapp', whatsapp)
-      .single();
+    const { data: cliente } = await supabase.rpc('get_cliente_by_phone', {
+      p_telefone: whatsapp,
+      p_lojista_id: lojistaId
+    });
       
     if (cliente) {
       setClienteLogado(cliente);
@@ -160,10 +165,12 @@ export default function Checkout() {
       setStep(3);
     } else {
       // Register
-      const { data: novoCli, error } = await supabase.from('clientes')
-        .insert({ lojista_id: lojistaId, whatsapp, senha_hash: 'na', nome: nome })
-        .select('*')
-        .single();
+      const { data: novoCli, error } = await supabase.rpc('register_cliente_secure', {
+        p_lojista_id: lojistaId,
+        p_whatsapp: whatsapp,
+        p_nome: nome,
+        p_senha_hash: 'na'
+      });
       
       if (error) {
         toast.error(`Erro ao registrar: ${error.message || error.details}`);
