@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiGrid, FiPackage, FiMessageSquare, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiX, FiDollarSign } from 'react-icons/fi';
+import { FiGrid, FiPackage, FiMessageSquare, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiX, FiDollarSign, FiHelpCircle } from 'react-icons/fi';
 import MenuLogo from '../../assets/MENU.svg';
 import './Dashboard.css';
 
@@ -63,6 +63,15 @@ export default function Dashboard() {
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', textDecoration: 'none' }}
               >
                 <FiExternalLink /> Acessar meu site
+              </a>
+              <a 
+                href="https://wa.me/5588981583038?text=Ol%C3%A1%2C+preciso+de+suporte+no+meu+painel+da+LanchoNet" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', textDecoration: 'none' }}
+              >
+                <FiHelpCircle /> Falar com Suporte
               </a>
             </div>
           )}
