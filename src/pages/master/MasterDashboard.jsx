@@ -65,12 +65,16 @@ export default function MasterDashboard() {
   async function alterarStatus(lojaId, novoStatus) {
     setAtualizando(lojaId);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('lojistas')
         .update({ status_assinatura: novoStatus })
-        .eq('id', lojaId);
+        .eq('id', lojaId)
+        .select();
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Acesso negado: Você não tem permissão para alterar essa loja. (Erro de RLS)');
+      }
 
       setLojas(prev => prev.map(l =>
         l.id === lojaId ? { ...l, status_assinatura: novoStatus } : l
@@ -94,12 +98,16 @@ export default function MasterDashboard() {
       await supabase.from('categorias').delete().eq('lojista_id', lojaId);
       await supabase.from('adicionais').delete().eq('lojista_id', lojaId);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('lojistas')
         .delete()
-        .eq('id', lojaId);
+        .eq('id', lojaId)
+        .select();
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Acesso negado: Permissão insuficiente para deletar (Erro de RLS).');
+      }
 
       setLojas(prev => prev.filter(l => l.id !== lojaId));
       toast.success('Loja e seus dados foram deletados com sucesso.');
