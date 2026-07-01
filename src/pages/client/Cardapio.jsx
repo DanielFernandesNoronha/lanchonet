@@ -29,7 +29,7 @@ export default function Cardapio() {
     async function load() {
       try {
         const safeSlug = slug ? slug.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]/g, '') : '';
-        const { data: loj, error: errLoj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido').eq('slug', safeSlug).single();
+        const { data: loj, error: errLoj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido, status_assinatura, trial_expira_em').eq('slug', safeSlug).single();
         if (!loj || errLoj) { 
           toast.error('Restaurante não encontrado'); 
           setLoading(false);
@@ -212,11 +212,14 @@ export default function Cardapio() {
 
   }
 
+  const isBloqueado = lojista?.status_assinatura === 'atrasado' || 
+    (lojista?.status_assinatura === 'trial' && new Date() > new Date(lojista?.trial_expira_em));
+
   if (!lojista) {
     return <div className="cardapio-page"><div className="container"><h2>Restaurante não encontrado</h2></div></div>;
   }
 
-  if (lojista.status_assinatura === 'atrasado') {
+  if (isBloqueado) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: 24, textAlign: 'center' }}>
         {lojista.logo_url && (
