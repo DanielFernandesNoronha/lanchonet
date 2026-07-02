@@ -64,12 +64,12 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
-  min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ===== SCROLLBAR ===== */
@@ -217,7 +217,7 @@ textarea { resize: vertical; min-height: 80px; }
   }
 }
 
-.page { min-height: 100vh; padding-bottom: 80px; }
+.page { min-height: 100dvh; padding-bottom: 80px; }
 
 /* ===== ANIMATIONS ===== */
 @keyframes fadeIn {
