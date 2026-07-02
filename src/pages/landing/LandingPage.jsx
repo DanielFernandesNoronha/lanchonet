@@ -14,11 +14,8 @@ export default function LandingPage() {
     // Evita a "faixa preta" no final do scroll (efeito overscroll do mobile) 
     // forçando a cor do body a ser exatamente a mesma cor do rodapé (branco)
     document.body.style.backgroundColor = '#ffffff';
-    // Trava o efeito "elástico" (rubber-banding) no iOS/Android para não revelar o fundo
-    document.body.style.overscrollBehaviorY = 'none';
     return () => {
       document.body.style.backgroundColor = '';
-      document.body.style.overscrollBehaviorY = '';
     };
   }, []);
 
