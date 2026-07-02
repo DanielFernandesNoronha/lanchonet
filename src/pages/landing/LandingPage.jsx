@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiCheck, FiSmartphone, FiMonitor, FiDollarSign, FiMessageCircle, FiArrowRight, FiShoppingBag, FiMenu, FiX, FiMessageSquare } from 'react-icons/fi';
 import MenuLogo from '../../assets/MENU.svg';
@@ -9,6 +9,15 @@ const WHATSAPP_SUPORTE = 'https://wa.me/5588981583038?text=Ol%C3%A1%2C+preciso+d
 export default function LandingPage() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    // Evita a "faixa preta" no final do scroll (efeito overscroll do mobile) 
+    // forçando a cor do body a ser clara enquanto estiver na landing page
+    document.body.style.backgroundColor = '#f8fafc';
+    return () => {
+      document.body.style.backgroundColor = '';
+    };
+  }, []);
 
   return (
     <div className="landing-page admin-theme">
