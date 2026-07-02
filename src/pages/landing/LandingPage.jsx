@@ -12,8 +12,8 @@ export default function LandingPage() {
 
   useEffect(() => {
     // Evita a "faixa preta" no final do scroll (efeito overscroll do mobile) 
-    // forçando a cor do body a ser clara enquanto estiver na landing page
-    document.body.style.backgroundColor = '#f8fafc';
+    // forçando a cor do body a ser exatamente a mesma cor do rodapé (branco)
+    document.body.style.backgroundColor = '#ffffff';
     return () => {
       document.body.style.backgroundColor = '';
     };
