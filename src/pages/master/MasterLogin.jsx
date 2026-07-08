@@ -1,15 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
 import { FiLock, FiMail, FiLoader, FiEye, FiEyeOff } from 'react-icons/fi';
-import './Master.css';
+import MenuLogo from '../../assets/MENU.svg';
 
-// Emails autorizados como master-admin (adicione o seu aqui)
-// O Supabase também valida via a tabela super_admins
-const MASTER_EMAILS_PERMITIDOS = [
-  // Adicione o email da conta master aqui
-  // Ex: 'daniel@oxentech.com.br'
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export default function MasterLogin() {
   const navigate = useNavigate();
@@ -25,31 +19,16 @@ export default function MasterLogin() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
-      if (error) throw new Error('E-mail ou senha incorretos.');
+      const res = await fetch(`${API_URL}/master/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao fazer login.');
 
-      // Verifica se é super admin
-      const { data: adminData, error: adminError } = await supabase
-        .from('super_admins')
-        .select('*')
-        .eq('user_id', data.user.id)
-        .maybeSingle();
-
-      console.log('--- DEBUG MASTER LOGIN ---');
-      console.log('ID logado:', data.user.id);
-      console.log('adminData retornado:', adminData);
-      console.log('adminError retornado:', adminError);
-      console.log('--------------------------');
-
-      if (adminError || !adminData) {
-        await supabase.auth.signOut();
-        throw new Error(`Acesso negado. Esta conta não tem privilégios de administrador master. (ID logado: ${data.user.id})`);
-      }
-
-      // Salva sessão master
-      sessionStorage.setItem('master_uid', data.user.id);
-      sessionStorage.setItem('master_email', data.user.email);
-
+      sessionStorage.setItem('master_token', data.token);
+      sessionStorage.setItem('master_email', data.email);
       navigate('/master');
     } catch (e) {
       setErro(e.message || 'Erro ao fazer login.');
@@ -59,53 +38,50 @@ export default function MasterLogin() {
   }
 
   return (
-    <div className="master-login">
-      <div className="master-login-card">
-        <div className="master-logo">
-          <div className="master-logo-icon">🛡️</div>
-          <span className="master-logo-text">LanchoNET</span>
+    <div className="login-page admin-theme">
+      <div className="login-glow" />
+      <div className="login-card slide-up">
+        <div className="login-logo" style={{ marginBottom: '16px' }}>
+          <img src={MenuLogo} alt="MENU Logo" style={{ height: '72px', width: 'auto' }} />
+          <span style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 700, letterSpacing: 2, display: 'block', marginTop: '-8px' }}>ADMIN MASTER</span>
         </div>
-        <p className="master-subtitle">Painel de Gestão — Acesso Restrito</p>
+        <p className="login-subtitle">Gestão Global do Sistema</p>
 
-        <form onSubmit={handleLogin}>
-          <div className="master-input-group">
-            <label>E-mail</label>
-            <input
-              className="master-input"
-              type="email"
-              placeholder="admin@seudominio.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="master-input-group">
-            <label>Senha</label>
-            <div style={{ position: 'relative' }}>
+        <form onSubmit={handleLogin} className="login-form">
+          <div className="input-group">
+            <label>E-mail Corporativo</label>
+            <div className="input-icon">
+              <FiMail />
               <input
-                className="master-input"
+                className="input"
+                type="email"
+                placeholder="admin@lancho.net"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="input-group">
+            <label>Senha de Acesso</label>
+            <div className="input-icon" style={{ position: 'relative' }}>
+              <FiLock />
+              <input
+                className="input"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={senha}
                 onChange={e => setSenha(e.target.value)}
                 required
-                style={{ paddingRight: '40px' }}
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: 'rgba(255,255,255,0.4)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: 0
+                  position: 'absolute', right: '12px', top: '50%',
+                  transform: 'translateY(-50%)', background: 'none',
+                  border: 'none', color: 'rgba(255,255,255,0.4)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0
                 }}
               >
                 {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
@@ -113,10 +89,14 @@ export default function MasterLogin() {
             </div>
           </div>
 
-          {erro && <div className="master-error">{erro}</div>}
+          {erro && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '12px', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '20px', textAlign: 'center' }}>
+              {erro}
+            </div>
+          )}
 
-          <button className="master-btn" type="submit" disabled={loading}>
-            {loading ? <><FiLoader className="spin" /> Entrando...</> : <><FiLock /> Acessar Painel</>}
+          <button className="btn" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
+            {loading ? <FiLoader className="spin" size={20} /> : <><FiLock size={20} /> Acessar Painel</>}
           </button>
         </form>
       </div>

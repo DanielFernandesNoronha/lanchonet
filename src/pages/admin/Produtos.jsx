@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { FiPlus, FiEdit2, FiTrash2, FiImage } from 'react-icons/fi';
 import toast from 'react-hot-toast';
@@ -23,14 +23,18 @@ export default function Produtos() {
   }, [lojista]);
 
   async function loadData() {
-    const [{ data: prods }, { data: cats }, { data: adds }] = await Promise.all([
-      supabase.from('produtos').select('*, categorias(nome), produto_adicionais(adicional_id)').eq('lojista_id', lojista.id).order('nome'),
-      supabase.from('categorias').select('*').eq('lojista_id', lojista.id).order('ordem'),
-      supabase.from('adicionais').select('*').eq('lojista_id', lojista.id).order('nome')
-    ]);
-    setProdutos(prods || []);
-    setCategorias(cats || []);
-    setAdicionaisGlobais(adds || []);
+    try {
+      const [prods, cats, adds] = await Promise.all([
+        api.get('/produtos'),
+        api.get('/categorias'),
+        api.get('/lojistas/adicionais')
+      ]);
+      setProdutos(prods || []);
+      setCategorias(cats || []);
+      setAdicionaisGlobais(adds || []);
+    } catch(e) {
+      toast.error('Erro ao carregar dados');
+    }
   }
 
   function abrirModal(produto = null) {
@@ -39,10 +43,10 @@ export default function Produtos() {
       setForm({ 
         nome: produto.nome, 
         preco: produto.preco, 
-        categoria_id: produto.categoria_id || '', 
+        categoria_id: produto.categoriaId || '', 
         descricao: produto.descricao || '', 
         disponivel: produto.disponivel,
-        adicionais: produto.produto_adicionais?.map(pa => pa.adicional_id) || []
+        adicionais: produto.adicionais?.map(pa => pa.adicionalId) || []
       });
     } else {
       setEditando(null);
@@ -56,37 +60,25 @@ export default function Produtos() {
     const payload = { 
       nome: form.nome, 
       preco: parseFloat(form.preco), 
-      categoria_id: form.categoria_id || null, 
+      categoriaId: form.categoria_id || null, 
       descricao: form.descricao, 
-      disponivel: form.disponivel, 
-      lojista_id: lojista.id 
+      disponivel: form.disponivel,
+      adicionais: form.adicionais
     };
 
-    let produtoId = null;
-
-    if (editando) {
-      const { error } = await supabase.from('produtos').update(payload).eq('id', editando.id);
-      if (error) { toast.error('Erro ao salvar'); return; }
-      produtoId = editando.id;
-      toast.success('Produto atualizado!');
-    } else {
-      const { data, error } = await supabase.from('produtos').insert(payload).select('id').single();
-      if (error) { toast.error('Erro ao criar'); return; }
-      produtoId = data.id;
-      toast.success('Produto criado!');
-    }
-
-    // Salvar adicionais vinculados
-    if (produtoId) {
-      await supabase.from('produto_adicionais').delete().eq('produto_id', produtoId);
-      if (form.adicionais.length > 0) {
-        const adicPayload = form.adicionais.map(adId => ({ produto_id: produtoId, adicional_id: adId }));
-        await supabase.from('produto_adicionais').insert(adicPayload);
+    try {
+      if (editando) {
+        await api.put(`/produtos/${editando.id}`, payload);
+        toast.success('Produto atualizado!');
+      } else {
+        await api.post('/produtos', payload);
+        toast.success('Produto criado!');
       }
+      setShowModal(false);
+      loadData();
+    } catch(e) {
+      toast.error('Erro ao salvar');
     }
-
-    setShowModal(false);
-    loadData();
   }
 
   function toggleAdicionalForm(adicionalId) {
@@ -101,15 +93,20 @@ export default function Produtos() {
 
   async function handleUpload(produtoId, file) {
     setUploading(true);
-    const ext = file.name.split('.').pop();
-    const path = `produtos/${lojista.id}/${produtoId}.${ext}`;
-    const { error: upErr } = await supabase.storage.from('imagens').upload(path, file, { upsert: true });
-    if (upErr) { toast.error('Erro no upload'); setUploading(false); return; }
-    const { data: urlData } = supabase.storage.from('imagens').getPublicUrl(path);
-    await supabase.from('produtos').update({ imagem_url: urlData.publicUrl }).eq('id', produtoId);
-    toast.success('Imagem atualizada!');
-    setUploading(false);
-    loadData();
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const { fileUrl } = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      await api.put(`/produtos/${produtoId}`, { imagemUrl: fileUrl });
+      toast.success('Imagem atualizada!');
+      loadData();
+    } catch(e) {
+      toast.error('Erro no upload');
+    } finally {
+      setUploading(false);
+    }
   }
 
   function triggerDelete(id) {
@@ -120,15 +117,23 @@ export default function Produtos() {
   async function handleDeleteConfirmado() {
     setShowConfirmModal(false);
     if (!idToDelete) return;
-    await supabase.from('produtos').delete().eq('id', idToDelete);
-    toast.success('Produto removido com sucesso!');
-    setIdToDelete(null);
-    loadData();
+    try {
+      await api.delete(`/produtos/${idToDelete}`);
+      toast.success('Produto removido com sucesso!');
+      setIdToDelete(null);
+      loadData();
+    } catch(e) {
+      toast.error('Erro ao excluir');
+    }
   }
 
   async function toggleDisponivel(produto) {
-    await supabase.from('produtos').update({ disponivel: !produto.disponivel }).eq('id', produto.id);
-    loadData();
+    try {
+      await api.put(`/produtos/${produto.id}`, { disponivel: !produto.disponivel });
+      loadData();
+    } catch(e) {
+      toast.error('Erro ao alterar disponibilidade');
+    }
   }
 
   return (
@@ -157,12 +162,12 @@ export default function Produtos() {
               <tr key={p.id} className="fade-in">
                 <td>
                   <label className="img-upload">
-                    {p.imagem_url ? <img src={p.imagem_url} alt="" className="prod-thumb" /> : <FiImage size={24} />}
+                    {p.imagemUrl ? <img src={p.imagemUrl} alt="" className="prod-thumb" /> : <FiImage size={24} />}
                     <input type="file" accept="image/*" hidden onChange={e => e.target.files[0] && handleUpload(p.id, e.target.files[0])} />
                   </label>
                 </td>
                 <td className="prod-name">{p.nome}</td>
-                <td>{p.categorias?.nome || '-'}</td>
+                <td>{p.categoria?.nome || '-'}</td>
                 <td className="prod-price">R$ {parseFloat(p.preco).toFixed(2)}</td>
                 <td>
                   <button className={`toggle ${p.disponivel ? 'on' : 'off'}`} onClick={() => toggleDisponivel(p)}>

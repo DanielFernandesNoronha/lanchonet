@@ -1,3 +1,5 @@
+import { api } from './apiClient';
+
 const N8N_BASE = import.meta.env.VITE_N8N_BASE_URL || '/webhook';
 
 export async function criarCobranca(lojistaId, carrinho, clienteDados, token = '') {
@@ -18,39 +20,18 @@ export async function criarCobranca(lojistaId, carrinho, clienteDados, token = '
 }
 
 export async function obterQRCodeWhatsApp(lojistaId, token = '') {
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res = await fetch(`${N8N_BASE}/whatsapp-qr`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ lojista_id: lojistaId }),
-  });
-  return res.json();
+  const res = await api.post('/lojistas/whatsapp/qr');
+  return res;
 }
 
 export async function verificarStatusWhatsApp(lojistaId, token = '') {
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res = await fetch(`${N8N_BASE}/whatsapp-status`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ lojista_id: lojistaId }),
-  });
-  return res.json();
+  const res = await api.get('/lojistas/whatsapp/status');
+  return res;
 }
 
 export async function desconectarWhatsApp(lojistaId, token = '') {
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res = await fetch(`${N8N_BASE}/whatsapp-logout`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ lojista_id: lojistaId }),
-  });
-  return res.json();
+  const res = await api.delete('/lojistas/whatsapp/logout');
+  return res;
 }
 
 export async function obterNomeWhatsApp(lojistaId, number, token = '') {
@@ -67,9 +48,10 @@ export async function obterNomeWhatsApp(lojistaId, number, token = '') {
 
 export async function gerarCobrancaMensalidade(lojistaId, token = '') {
   const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const authToken = token || localStorage.getItem('lanchonet_token');
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
-  const res = await fetch(`${N8N_BASE}/saas-gerar-cobranca`, {
+  const res = await fetch(`${API_BASE}/lojistas/assinatura/gerar-pix`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ lojista_id: lojistaId }),

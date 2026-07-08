@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { verificarStatusWhatsApp, obterQRCodeWhatsApp, desconectarWhatsApp } from '../../lib/api';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/apiClient';
 import { FiSmartphone, FiCheckCircle, FiRefreshCw, FiMessageCircle, FiSave, FiLogOut } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import './WhatsApp.css';
@@ -37,15 +37,10 @@ export default function WhatsApp() {
   async function loadConfigs() {
     if (!lojista) return;
     try {
-      const { data, error } = await supabase
-        .from('lojistas')
-        .select('auto_responder_enabled, auto_responder_message')
-        .eq('id', lojista.id)
-        .single();
-
-      if (!error && data) {
-        setAutoResponderEnabled(data.auto_responder_enabled || false);
-        setAutoResponderMessage(data.auto_responder_message || '');
+      const data = await api.get('/auth/me');
+      if (data) {
+        setAutoResponderEnabled(data.autoResponderEnabled || false);
+        setAutoResponderMessage(data.autoResponderMessage || '');
       }
     } catch (e) {
       console.error(e);
@@ -55,15 +50,11 @@ export default function WhatsApp() {
   async function saveConfigs() {
     setSavingConfig(true);
     try {
-      const { error } = await supabase
-        .from('lojistas')
-        .update({
-          auto_responder_enabled: autoResponderEnabled,
-          auto_responder_message: autoResponderMessage
-        })
-        .eq('id', lojista.id);
+      await api.patch('/lojistas/config', {
+        autoResponderEnabled,
+        autoResponderMessage
+      });
 
-      if (error) throw error;
       toast.success('Configurações salvas!');
     } catch (e) {
       console.error(e);

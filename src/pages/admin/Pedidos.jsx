@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api, SSE_URL } from '../../lib/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { FiTrash2, FiMessageCircle, FiX, FiCheck, FiEdit2, FiPlus, FiChevronRight, FiDollarSign, FiMapPin, FiClock, FiPackage, FiPhone, FiStar, FiCoffee, FiTruck, FiCheckCircle, FiUser, FiCreditCard, FiShoppingBag, FiPower, FiSearch } from 'react-icons/fi';
@@ -27,8 +27,10 @@ export default function Pedidos() {
   const [showManualTimersModal, setShowManualTimersModal] = useState(false);
   const [manualTimeEntrega, setManualTimeEntrega] = useState('');
   const [manualTimeRetirada, setManualTimeRetirada] = useState('');
+  const [somMutado, setSomMutado] = useState(() => localStorage.getItem('lanchonet_som_mutado') === 'true');
 
-  const tocarSomCampainha = () => {
+  const tocarSomCampainha = (forcePlay = false) => {
+    if (!forcePlay && localStorage.getItem('lanchonet_som_mutado') === 'true') return;
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
@@ -60,8 +62,52 @@ export default function Pedidos() {
       gain2.connect(ctx.destination);
       osc2.start(now + 0.3);
       osc2.stop(now + 0.8);
+    } catch (e) {
+      console.log('Audio error:', e);
+    }
+  };
+
+  const toggleMute = () => {
+    const novoStatus = !somMutado;
+    setSomMutado(novoStatus);
+    localStorage.setItem('lanchonet_som_mutado', novoStatus.toString());
+    if (!novoStatus) {
+      tocarSomCampainha(true);
+    }
+  };
+
+  const toggleLoja = async () => {
+    try {
+      await api.patch('/lojistas/config', { aberto: !lojista?.aberto });
+      if (typeof window.fetchLojista === 'function') window.fetchLojista(); // Falha graciosa se não der certo
+      toast.success(lojista?.aberto ? 'Loja fechada!' : 'Loja aberta!');
+      setTimeout(() => window.location.reload(), 1000);
     } catch(e) {
-      console.error('Erro ao tocar som:', e);
+      toast.error('Erro ao mudar status da loja');
+    }
+  };
+
+  const toggleTimers = async () => {
+    try {
+      await api.patch('/lojistas/config', { pausarTimers: !lojista?.pausarTimers });
+      if (typeof window.fetchLojista === 'function') window.fetchLojista();
+      toast.success(lojista?.pausarTimers ? 'Timers ativados!' : 'Timers pausados!');
+      setTimeout(() => window.location.reload(), 1000);
+    } catch(e) {
+      toast.error('Erro ao mudar timers');
+    }
+  };
+
+  const updateTimerConfig = async (status, value) => {
+    const min = parseInt(value, 10);
+    if (isNaN(min)) return;
+    const field = `tempo${status.charAt(0).toUpperCase() + status.slice(1)}`;
+    try {
+      await api.patch('/lojistas/config', { [field]: min });
+      if (typeof window.fetchLojista === 'function') window.fetchLojista();
+      toast.success('Tempo atualizado!');
+    } catch(e) {
+      toast.error('Erro ao salvar tempo');
     }
   };
 
@@ -70,90 +116,65 @@ export default function Pedidos() {
     if (!lojista) return;
 
     async function load() {
-      const [pedidosRes, produtosRes, bairrosRes, adicionaisRes] = await Promise.all([
-        supabase.from('pedidos').select('*, clientes(nome, telefone)').eq('lojista_id', lojista.id).order('created_at', { ascending: false }),
-        supabase.from('produtos').select('*').eq('lojista_id', lojista.id).eq('disponivel', true),
-        supabase.from('taxas_entrega').select('*').eq('lojista_id', lojista.id),
-        supabase.from('adicionais').select('*').eq('lojista_id', lojista.id)
-      ]);
-      setPedidos(pedidosRes.data || []);
-      setProdutos(produtosRes.data || []);
-      setBairros(bairrosRes.data || []);
-      setAdicionaisGlobais(adicionaisRes.data || []);
-      setLoading(false);
+      try {
+        const [pedidosRes, produtosRes, bairrosRes, adicionaisRes] = await Promise.all([
+          api.get('/pedidos'),
+          api.get('/produtos'),
+          api.get('/lojistas/bairros'),
+          api.get('/lojistas/adicionais')
+        ]);
+        setPedidos(pedidosRes || []);
+        setProdutos(produtosRes || []);
+        setBairros(bairrosRes || []);
+        setAdicionaisGlobais(adicionaisRes || []);
+      } catch(e) {
+        toast.error('Erro ao carregar dados iniciais');
+      } finally {
+        setLoading(false);
+      }
     }
     load();
 
-    const channel = supabase
-      .channel('pedidos-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `lojista_id=eq.${lojista.id}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setPedidos(prev => [payload.new, ...prev]);
-          toast.success('Novo pedido recebido!', { duration: 5000 });
-          tocarSomCampainha();
-        }
-        if (payload.eventType === 'UPDATE') {
-          setPedidos(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p));
-          if (pedidoSelecionado && pedidoSelecionado.id === payload.new.id) {
-            setPedidoSelecionado(prev => ({ ...prev, ...payload.new }));
-          }
-        }
-        if (payload.eventType === 'DELETE') {
-          setPedidos(prev => prev.filter(p => p.id !== payload.old.id));
-        }
-      })
-      .subscribe();
+    const token = localStorage.getItem('lanchonet_token');
+    if (!token) return;
 
-    return () => supabase.removeChannel(channel);
-  }, [lojista]);
-  // --- Auto-Advance Timers ---
-  const [tick, setTick] = useState(0);
-  const advancingIds = useRef(new Set());
-  const deletingIds = useRef(new Set());
+    const eventSource = new EventSource(`${SSE_URL}/${lojista.id}?auth_token=${token}`);
 
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 1000); // Tick every 1s
-    return () => clearInterval(interval);
-  }, []);
+    eventSource.addEventListener('novo_pedido', (e) => {
+      const novoPedido = JSON.parse(e.data);
+      setPedidos(prev => [novoPedido, ...prev]);
+      toast.success('Novo pedido recebido!', { duration: 5000 });
+      tocarSomCampainha();
+    });
 
-  useEffect(() => {
-    if (!lojista || lojista.pausar_timers || pedidos.length === 0) return;
-
-    const now = Date.now();
-    pedidos.forEach(p => {
-      const startTime = new Date(p.status_updated_at || p.created_at).getTime();
-      const elapsedMins = (now - startTime) / 60000;
-      
-      let shouldAdvance = false;
-      if (p.status === 'novo' && elapsedMins >= (lojista.tempo_novo ?? 5)) shouldAdvance = true;
-      else if (p.status === 'preparando' && elapsedMins >= (lojista.tempo_preparando ?? 30)) shouldAdvance = true;
-      else if (p.status === 'entrega' && elapsedMins >= (lojista.tempo_entrega ?? 40)) shouldAdvance = true;
-
-      if (shouldAdvance && p.status !== 'concluido') {
-        if (!advancingIds.current.has(p.id)) {
-          avancarStatus(p);
-        }
-      } else if (p.status === 'concluido' && elapsedMins >= (lojista.tempo_concluido ?? 10)) {
-        if (!deletingIds.current.has(p.id)) {
-          excluirPedidoSilencioso(p.id);
-        }
+    eventSource.addEventListener('status_atualizado', (e) => {
+      const pedidoAtualizado = JSON.parse(e.data);
+      setPedidos(prev => prev.map(p => p.id === pedidoAtualizado.id ? { ...p, ...pedidoAtualizado } : p));
+      if (pedidoSelecionado && pedidoSelecionado.id === pedidoAtualizado.id) {
+        setPedidoSelecionado(prev => ({ ...prev, ...pedidoAtualizado }));
       }
     });
-  }, [tick]); // run every 1s
+
+    eventSource.addEventListener('pedido_removido', (e) => {
+      const payload = JSON.parse(e.data);
+      setPedidos(prev => prev.filter(p => p.id !== payload.id));
+    });
+
+    return () => eventSource.close();
+  }, [lojista]);
+  // --- Auto-Advance logic removed. Now handled entirely by Backend Cron ---
+  const advancingIds = useRef(new Set());
+  const deletingIds = useRef(new Set());
 
   async function excluirPedidoSilencioso(id) {
     if (deletingIds.current.has(id)) return;
     deletingIds.current.add(id);
 
     try {
-      const { error } = await supabase.from('pedidos').delete().eq('id', id);
-      if (!error) {
-        setPedidos(prev => prev.filter(p => p.id !== id));
-        if (pedidoSelecionado?.id === id) { setPedidoSelecionado(null); setIsEditing(false); }
-      }
-    } finally {
+      await api.delete(`/pedidos/${id}`);
+      setPedidos(prev => prev.filter(p => p.id !== id));
       deletingIds.current.delete(id);
-    }
+    } catch(e) { setPedidoSelecionado(null); setIsEditing(false); }
   }
 
   // --- Actions ---
@@ -164,78 +185,23 @@ export default function Pedidos() {
     if (idx >= STATUS_ORDER.length - 1) return;
     
     let novoStatus = STATUS_ORDER[idx + 1];
-    const tipoPedido = pedido.cliente_dados?.tipo_pedido || 'ENTREGA';
-    if (pedido.status === 'preparando' && tipoPedido === 'RETIRADA') {
+    
+    if (pedido.clienteDados?.tipo_pedido === 'RETIRADA' && novoStatus === 'entrega') {
       novoStatus = 'concluido';
     }
-
-    let previsaoManual = '';
-    // Se estiver avançando para preparando e os timers automáticos estiverem pausados
-    if (novoStatus === 'preparando' && lojista?.pausar_timers) {
-      previsaoManual = tipoPedido === 'ENTREGA' ? lojista.tempo_manual_entrega : lojista.tempo_manual_retirada;
-    }
-
+    
     advancingIds.current.add(pedido.id);
 
     try {
-      const nowISO = new Date().toISOString();
-      const { error } = await supabase.from('pedidos').update({ 
-        status: novoStatus,
-        status_updated_at: nowISO
-      }).eq('id', pedido.id);
-      if (error) {
-        toast.error('Erro ao atualizar');
-        return;
-      }
-
-      setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, status: novoStatus, status_updated_at: nowISO } : p));
-      if (pedidoSelecionado?.id === pedido.id) setPedidoSelecionado(prev => ({...prev, status: novoStatus, status_updated_at: nowISO}));
-      toast.success(`Status → ${STATUS_LABELS[novoStatus]}`);
-
-      // WhatsApp notification
-      const pedidoNum = pedido.id.slice(0, 6).toUpperCase();
-      const nomeRestaurante = lojista?.nome || 'Restaurante';
-      const nomeCliente = pedido.clientes?.nome || pedido.cliente_dados?.nome || 'Cliente';
-      const tipoPed = pedido.cliente_dados?.tipo_pedido || 'ENTREGA';
-
-      let txtPreparando = `👨‍🍳 *Pedido #${pedidoNum} em preparo!*\n\n*${nomeRestaurante}* já está cuidando do seu pedido com todo carinho. 🍳\n\n`;
-      if (previsaoManual && typeof previsaoManual === 'string' && previsaoManual.trim()) {
-        txtPreparando += `⏱️ *Previsão estimada:* ${previsaoManual.trim()}\n\n`;
-      }
-      txtPreparando += `Fique de olho, logo logo fica pronto!`;
-
-      const statusMsgs = {
-        'preparando': txtPreparando,
-        'entrega': `🛵 *Pedido #${pedidoNum} saiu para entrega!*\n\nNosso entregador já está a caminho! 🏃‍♂️\n\nFique de olho no portão. 😊\n\n*${nomeRestaurante}* agradece sua preferência! ❤️`,
-      };
+      await api.patch(`/pedidos/${pedido.id}/status`, { status: novoStatus });
+      advancingIds.current.delete(pedido.id);
       
-      let mensagemEnvio = '';
-      if (novoStatus === 'concluido') {
-        if (tipoPed === 'RETIRADA') {
-          mensagemEnvio = `🛍️ *Pedido #${pedidoNum} pronto para retirada!*\n\nOlá, ${nomeCliente}! Seu pedido está te esperando no balcão.\n\nNão esqueça de confirmar o número do pedido na retirada.\n\n*${nomeRestaurante}* 💚`;
-        } else {
-          mensagemEnvio = `✅ *Pedido #${pedidoNum} entregue!*\n\nEsperamos que você aproveite muito, ${nomeCliente}! 🎉\n\nQualquer dúvida ou problema, fale comigo aqui no WhatsApp.\n\n*${nomeRestaurante}* ❤️`;
-        }
-      } else if (statusMsgs[novoStatus]) {
-        mensagemEnvio = statusMsgs[novoStatus];
-      }
-
-      if (mensagemEnvio) {
-        try {
-          const nome = pedido.clientes?.nome || pedido.cliente_dados?.nome || 'Cliente';
-          let tel = pedido.clientes?.telefone || pedido.cliente_dados?.whatsapp || '';
-          tel = tel.replace(/\D/g, '');
-          if (tel) {
-            if (!tel.startsWith('55') && tel.length <= 11) tel = `55${tel}`;
-            await fetch('/webhook/whatsapp-status-update', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ lojista_id: lojista.id, telefone: tel, mensagem: `Olá, ${nome}!\n\n${mensagemEnvio}\n\nPedido #${pedido.id.slice(0, 6)}` })
-            });
-          }
-        } catch (e) { console.error('WhatsApp error', e); }
-      }
-    } finally {
+      const nowISO = new Date().toISOString();
+      setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, status: novoStatus, statusUpdatedAt: nowISO } : p));
+      if (pedidoSelecionado?.id === pedido.id) setPedidoSelecionado(prev => ({...prev, status: novoStatus, statusUpdatedAt: nowISO}));
+      toast.success(`Status → ${STATUS_LABELS[novoStatus]}`);
+    } catch(e) {
+      toast.error('Erro ao atualizar');
       advancingIds.current.delete(pedido.id);
     }
   }
@@ -245,103 +211,33 @@ export default function Pedidos() {
     setShowConfirmModal(true);
   }
 
-  async function excluirPedidoConfirmado() {
-    setShowConfirmModal(false);
+  const confirmarExclusao = async () => {
     if (!idToDelete) return;
-    const { error } = await supabase.from('pedidos').delete().eq('id', idToDelete);
-    if (error) return toast.error('Erro ao excluir. Rode o SQL de permissão no Supabase.');
-    setPedidos(prev => prev.filter(p => p.id !== idToDelete));
-    if (pedidoSelecionado?.id === idToDelete) { setPedidoSelecionado(null); setIsEditing(false); }
+    try {
+      await api.delete(`/pedidos/${idToDelete}`);
+      toast.success('Pedido excluído permanentemente');
+      setPedidos(prev => prev.filter(p => p.id !== idToDelete));
+      if (pedidoSelecionado?.id === idToDelete) setPedidoSelecionado(null);
+    } catch (error) {
+      toast.error('Erro ao excluir pedido');
+    }
+    setShowConfirmModal(false);
     setIdToDelete(null);
-    toast.success('Pedido excluído');
-  }
+  };
 
-  async function toggleLoja() {
-    if (!lojista) return;
-    const novoStatus = !lojista.aberto;
-    const { error } = await supabase.from('lojistas').update({ aberto: novoStatus }).eq('id', lojista.id);
-    if (!error) {
-      lojista.aberto = novoStatus;
-      setTick(t => t + 1); // trigger re-render
-      toast.success(novoStatus ? 'Loja Aberta!' : 'Loja Fechada!');
-    } else toast.error('Erro! Rode o script SQL no Supabase.');
-  }
 
-  async function toggleTimers() {
-    if (!lojista) return;
-    const isPausando = !lojista.pausar_timers;
-    
-    if (isPausando) {
-      setManualTimeEntrega(lojista.tempo_manual_entrega || '');
-      setManualTimeRetirada(lojista.tempo_manual_retirada || '');
-      setShowManualTimersModal(true);
-      return;
-    }
-
-    // Retomando timers automáticos
-    const { error } = await supabase.from('lojistas').update({ 
-      pausar_timers: false,
-      tempo_manual_entrega: null,
-      tempo_manual_retirada: null
-    }).eq('id', lojista.id);
-
-    if (!error) {
-      lojista.pausar_timers = false;
-      lojista.tempo_manual_entrega = null;
-      lojista.tempo_manual_retirada = null;
-      setTick(t => t + 1);
-      toast.success('Timers Ativos! Calculando automaticamente.');
-    } else toast.error('Erro! Rode o script SQL no Supabase.');
-  }
-
-  async function confirmManualTimers(e) {
-    e.preventDefault();
-    if (!manualTimeEntrega.trim() || !manualTimeRetirada.trim()) {
-      return toast.error('Por favor, preencha os dois tempos (entrega e retirada).');
-    }
-    
-    const { error } = await supabase.from('lojistas').update({ 
-      pausar_timers: true,
-      tempo_manual_entrega: manualTimeEntrega.trim(),
-      tempo_manual_retirada: manualTimeRetirada.trim()
-    }).eq('id', lojista.id);
-
-    if (!error) {
-      lojista.pausar_timers = true;
-      lojista.tempo_manual_entrega = manualTimeEntrega.trim();
-      lojista.tempo_manual_retirada = manualTimeRetirada.trim();
-      setShowManualTimersModal(false);
-      setTick(t => t + 1);
-      toast.success('Timers pausados e previsões manuais salvas!');
-    } else {
-      toast.error('Ocorreu um erro. Por favor, certifique-se de ter rodado o SQL de colunas novas no Supabase!');
-    }
-  }
-
-  async function updateTimerConfig(status, val) {
-    if (!lojista) return;
-    const num = parseInt(val);
-    if (isNaN(num) || num < 0) return;
-    const campo = `tempo_${status}`;
-    const { error } = await supabase.from('lojistas').update({ [campo]: num }).eq('id', lojista.id);
-    if (!error) {
-      lojista[campo] = num;
-      setTick(t => t + 1);
-      toast.success(`Tempo de "${STATUS_LABELS[status]}" atualizado!`);
-    } else toast.error('Erro ao salvar tempo.');
-  }
 
   // --- Edit ---
   function iniciarEdicao() {
     setEditData({
       status: pedidoSelecionado.status,
-      forma_pagamento: pedidoSelecionado.cliente_dados?.forma_pagamento || 'PIX',
-      pago: pedidoSelecionado.cliente_dados?.pago || false,
-      taxa_entrega: pedidoSelecionado.taxa_entrega || 0,
-      tipo_pedido: pedidoSelecionado.cliente_dados?.tipo_pedido || 'RETIRADA',
+      forma_pagamento: pedidoSelecionado.clienteDados?.forma_pagamento || 'PIX',
+      pago: pedidoSelecionado.clienteDados?.pago || false,
+      taxa_entrega: pedidoSelecionado.taxaEntrega || 0,
+      tipo_pedido: pedidoSelecionado.clienteDados?.tipo_pedido || 'RETIRADA',
       itens: JSON.parse(JSON.stringify(pedidoSelecionado.itens || [])),
-      bairro: pedidoSelecionado.cliente_dados?.bairro || '',
-      endereco: pedidoSelecionado.cliente_dados?.endereco || { rua: '', numero: '', complemento: '' }
+      bairro: pedidoSelecionado.clienteDados?.bairro || '',
+      endereco: pedidoSelecionado.clienteDados?.endereco || { rua: '', numero: '', complemento: '' }
     });
     setIsEditing(true);
     setShowAddItem(false);
@@ -352,7 +248,7 @@ export default function Pedidos() {
     const sub = calcSubtotal(editData.itens);
     const total = sub + parseFloat(editData.taxa_entrega || 0);
     const dadosAtualizados = {
-      ...pedidoSelecionado.cliente_dados,
+      ...pedidoSelecionado.clienteDados,
       pago: editData.pago,
       forma_pagamento: editData.forma_pagamento,
       tipo_pedido: editData.tipo_pedido,
@@ -363,17 +259,19 @@ export default function Pedidos() {
 
     const taxaFinal = editData.tipo_pedido === 'ENTREGA' ? parseFloat(editData.taxa_entrega || 0) : 0;
     const totalFinal = sub + taxaFinal;
-    const { error } = await supabase.from('pedidos').update({
-      status: editData.status,
-      total: totalFinal, subtotal: sub,
-      taxa_entrega: taxaFinal,
-      cliente_dados: dadosAtualizados,
-      itens: editData.itens
-    }).eq('id', pedidoSelecionado.id);
-
-    if (error) return toast.error('Erro ao salvar');
-    toast.success('Pedido atualizado!');
-    setIsEditing(false);
+    try {
+      await api.put(`/pedidos/${pedidoSelecionado.id}`, {
+        status: editData.status,
+        total: totalFinal, subtotal: sub,
+        taxaEntrega: taxaFinal,
+        clienteDados: dadosAtualizados,
+        itens: editData.itens
+      });
+      toast.success('Pedido atualizado!');
+      setIsEditing(false);
+    } catch(e) {
+      toast.error('Erro ao salvar');
+    }
     setPedidoSelecionado(prev => ({ ...prev, status: editData.status, total: totalFinal, subtotal: sub, taxa_entrega: taxaFinal, cliente_dados: dadosAtualizados, itens: editData.itens }));
   }
 
@@ -450,11 +348,11 @@ export default function Pedidos() {
         {/* Right: action buttons */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' }}>
           <button
-            onClick={tocarSomCampainha}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
-            title="Testar e habilitar som de notificação"
+            onClick={toggleMute}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: somMutado ? 'var(--red-glow)' : 'var(--bg-secondary)', color: somMutado ? 'var(--red)' : 'var(--text-primary)', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+            title="Mutar/Desmutar som de notificação"
           >
-            🔊 Testar Som
+            {somMutado ? '🔇 Mutado' : '🔊 Mutar Som'}
           </button>
           <button
             onClick={toggleTimers}
@@ -479,7 +377,7 @@ export default function Pedidos() {
               if (p.status !== status) return false;
               if (!searchQuery.trim()) return true;
               const q = searchQuery.trim().toLowerCase();
-              const nome = (p.clientes?.nome || p.cliente_dados?.nome || '').toLowerCase();
+              const nome = (p.clientes?.nome || p.clienteDados?.nome || '').toLowerCase();
               const codigo = p.id.slice(0, 6).toLowerCase();
               return nome.includes(q) || codigo.includes(q);
             }).length;
@@ -490,12 +388,12 @@ export default function Pedidos() {
                     <span className="ped-col-icon">{STATUS_ICONS[status]}</span>
                     <span className="ped-col-label">{STATUS_LABELS[status]}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-primary)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }} title="Minutos até o timer expirar">
                       <FiClock size={10} style={{ color: 'var(--text-muted)', marginRight: 4 }} />
                       <input 
                         type="number" 
-                        defaultValue={lojista ? (lojista[`tempo_${status}`] ?? (status === 'novo' ? 5 : status === 'preparando' ? 30 : status === 'entrega' ? 40 : 10)) : 0} 
+                        defaultValue={lojista ? (lojista[`tempo${status.charAt(0).toUpperCase() + status.slice(1)}`] ?? (status === 'novo' ? 5 : status === 'preparando' ? 30 : status === 'entrega' ? 40 : 10)) : 0} 
                         onBlur={(e) => updateTimerConfig(status, e.target.value)}
                         style={{ width: 28, background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.75rem', fontWeight: 600, padding: 0, textAlign: 'center', outline: 'none' }}
                       />
@@ -509,20 +407,20 @@ export default function Pedidos() {
                     if (p.status !== status) return false;
                     if (!searchQuery.trim()) return true;
                     const q = searchQuery.trim().toLowerCase();
-                    const nome = (p.clientes?.nome || p.cliente_dados?.nome || '').toLowerCase();
+                    const nome = (p.clientes?.nome || p.clienteDados?.nome || '').toLowerCase();
                     const codigo = p.id.slice(0, 6).toLowerCase();
                     return nome.includes(q) || codigo.includes(q);
                   }).map(pedido => {
-                    const nome = pedido.clientes?.nome || pedido.cliente_dados?.nome || '—';
-                    const pago = pedido.cliente_dados?.pago;
+                    const nome = pedido.clientes?.nome || pedido.clienteDados?.nome || '—';
+                    const pago = pedido.clienteDados?.pago;
                     const isActive = pedidoSelecionado?.id === pedido.id;
                     return (
                       <div key={pedido.id} className={`ped-card ${isActive ? 'ped-card--active' : ''}`} onClick={() => openPedido(pedido)} style={{ position: 'relative', overflow: 'hidden' }}>
                         
                         {/* Top Progress Line */}
                         {(() => {
-                          const limit = status === 'novo' ? (lojista?.tempo_novo ?? 5) : status === 'preparando' ? (lojista?.tempo_preparando ?? 30) : status === 'entrega' ? (lojista?.tempo_entrega ?? 40) : (lojista?.tempo_concluido ?? 10);
-                          const startTime = new Date(pedido.status_updated_at || pedido.created_at).getTime();
+                          const limit = status === 'novo' ? (lojista?.tempoNovo ?? 5) : status === 'preparando' ? (lojista?.tempoPreparando ?? 30) : status === 'entrega' ? (lojista?.tempoEntrega ?? 40) : (lojista?.tempoConcluido ?? 10);
+                          const startTime = new Date(pedido.statusUpdatedAt || pedido.createdAt).getTime();
                           const elapsedMins = (Date.now() - startTime) / 60000;
                           const pct = Math.min((elapsedMins / limit) * 100, 100);
                           const isDanger = pct > 80;
@@ -538,8 +436,8 @@ export default function Pedidos() {
                           
                           {/* Beautiful Timer Badge */}
                           {(() => {
-                            const limit = status === 'novo' ? (lojista?.tempo_novo ?? 5) : status === 'preparando' ? (lojista?.tempo_preparando ?? 30) : status === 'entrega' ? (lojista?.tempo_entrega ?? 40) : (lojista?.tempo_concluido ?? 10);
-                            const startTime = new Date(pedido.status_updated_at || pedido.created_at).getTime();
+                            const limit = status === 'novo' ? (lojista?.tempoNovo ?? 5) : status === 'preparando' ? (lojista?.tempoPreparando ?? 30) : status === 'entrega' ? (lojista?.tempoEntrega ?? 40) : (lojista?.tempoConcluido ?? 10);
+                            const startTime = new Date(pedido.statusUpdatedAt || pedido.createdAt).getTime();
                             const elapsedMins = (Date.now() - startTime) / 60000;
                             const pct = Math.min((elapsedMins / limit) * 100, 100);
                             const remainingMins = Math.max(0, limit - elapsedMins);
@@ -742,30 +640,31 @@ export default function Pedidos() {
                     {/* Cliente */}
                     <div className="ped-view-section">
                       <h4 className="ped-view-title"><FiUser /> Cliente</h4>
-                      <p className="ped-view-line"><strong>Nome:</strong> {pedidoSelecionado.clientes?.nome || pedidoSelecionado.cliente_dados?.nome || '—'}</p>
-                      <p className="ped-view-line"><FiPhone size={13}/> {pedidoSelecionado.cliente_dados?.whatsapp || '—'}</p>
+                      <p className="ped-view-line"><strong>Nome:</strong> {pedidoSelecionado.clientes?.nome || pedidoSelecionado.clienteDados?.nome || '—'}</p>
+                      <p className="ped-view-line"><FiPhone size={13}/> {pedidoSelecionado.clienteDados?.whatsapp || '—'}</p>
                     </div>
 
                     {/* Pagamento */}
                     <div className="ped-view-section">
                       <h4 className="ped-view-title"><FiCreditCard /> Pagamento</h4>
                       <div className="ped-view-chips">
-                        <span className="ped-chip">{pedidoSelecionado.cliente_dados?.forma_pagamento || 'PIX'}</span>
-                        <span className={`ped-chip ${pedidoSelecionado.cliente_dados?.pago ? 'ped-chip--green' : 'ped-chip--red'}`}>
-                          {pedidoSelecionado.cliente_dados?.pago ? '✓ Pago' : '✗ Pendente'}
+                        <span className="ped-chip">{pedidoSelecionado.clienteDados?.forma_pagamento || 'PIX'}</span>
+                        <span className={`ped-chip ${pedidoSelecionado.clienteDados?.pago ? 'ped-chip--green' : 'ped-chip--red'}`}>
+                          {pedidoSelecionado.clienteDados?.pago ? '✓ Pago' : '✗ Pendente'}
                         </span>
                       </div>
-                      {pedidoSelecionado.cliente_dados?.troco_para && <p className="ped-view-line">Troco para: R$ {pedidoSelecionado.cliente_dados.troco_para}</p>}
+                      {pedidoSelecionado.clienteDados?.troco_para && <p className="ped-view-line">Troco para: R$ {pedidoSelecionado.clienteDados.troco_para}</p>}
                     </div>
 
                     {/* Entrega */}
                     <div className="ped-view-section">
                       <h4 className="ped-view-title"><FiMapPin /> Entrega</h4>
-                      {pedidoSelecionado.cliente_dados?.tipo_pedido === 'ENTREGA' ? (
+                      {pedidoSelecionado.clienteDados?.tipo_pedido === 'ENTREGA' ? (
                         <>
-                          <p className="ped-view-line">{pedidoSelecionado.cliente_dados?.endereco?.rua}, {pedidoSelecionado.cliente_dados?.endereco?.numero || 'S/N'}</p>
-                          {pedidoSelecionado.cliente_dados?.endereco?.complemento && <p className="ped-view-line">Compl: {pedidoSelecionado.cliente_dados.endereco.complemento}</p>}
-                          <p className="ped-view-line"><strong>Bairro:</strong> {pedidoSelecionado.cliente_dados?.bairro}</p>
+                          <p className="ped-view-line">{pedidoSelecionado.clienteDados?.endereco?.rua}, {pedidoSelecionado.clienteDados?.endereco?.numero || 'S/N'}</p>
+                          {pedidoSelecionado.clienteDados?.endereco?.complemento && <p className="ped-view-line">Compl: {pedidoSelecionado.clienteDados.endereco.complemento}</p>}
+                          {pedidoSelecionado.clienteDados?.endereco?.observacao && <p className="ped-view-line" style={{ color: 'var(--accent)' }}>Obs/Ref: {pedidoSelecionado.clienteDados.endereco.observacao}</p>}
+                          <p className="ped-view-line"><strong>Bairro:</strong> {pedidoSelecionado.clienteDados?.bairro}</p>
                         </>
                       ) : (
                         <p className="ped-view-line ped-view-highlight"><FiPackage /> Retirada no Balcão</p>
@@ -777,16 +676,34 @@ export default function Pedidos() {
                       <h4 className="ped-view-title"><FiShoppingBag /> Itens</h4>
                       <ul className="ped-itens-list">
                         {(Array.isArray(pedidoSelecionado.itens) ? pedidoSelecionado.itens : []).map((item, i) => (
-                          <li key={i} className="ped-item-row">
-                            <span className="ped-item-qty">{item.quantidade}x</span>
-                            <span className="ped-item-name">{item.nome}</span>
-                            <span className="ped-item-price">R$ {parseFloat(item.preco_calculado || item.preco || 0).toFixed(2)}</span>
+                          <li key={i} className="ped-item-row" style={{ display: 'flex', flexDirection: 'column', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span className="ped-item-qty">{item.quantidade}x</span>
+                                <span className="ped-item-name">{item.nome}</span>
+                              </div>
+                              <span className="ped-item-price">R$ {parseFloat(item.preco_calculado || item.preco || 0).toFixed(2)}</span>
+                            </div>
+                            {item.adicionais && item.adicionais.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4, paddingLeft: 24 }}>
+                                {item.adicionais.map((adc, idx) => (
+                                  <span key={idx} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: 4 }}>
+                                    + {adc.nome} <small>(R$ {parseFloat(adc.preco || 0).toFixed(2)})</small>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {item.observacao && (
+                              <div style={{ paddingLeft: 24, marginTop: 4, fontSize: '0.8rem', color: 'var(--accent)', fontStyle: 'italic' }}>
+                                Obs: {item.observacao}
+                              </div>
+                            )}
                           </li>
                         ))}
                       </ul>
                       <div className="ped-totals">
                         <div className="ped-totals-row"><span>Subtotal</span><span>R$ {parseFloat(pedidoSelecionado.subtotal || 0).toFixed(2)}</span></div>
-                        <div className="ped-totals-row"><span>Entrega</span><span>R$ {parseFloat(pedidoSelecionado.taxa_entrega || 0).toFixed(2)}</span></div>
+                        <div className="ped-totals-row"><span>Entrega</span><span>R$ {parseFloat(pedidoSelecionado.taxaEntrega || 0).toFixed(2)}</span></div>
                         <div className="ped-totals-row ped-totals-row--total"><span>Total</span><span>R$ {parseFloat(pedidoSelecionado.total || 0).toFixed(2)}</span></div>
                       </div>
                     </div>
@@ -808,7 +725,7 @@ export default function Pedidos() {
                     {pedidoSelecionado.status !== 'concluido' && (
                       <button className="ped-btn ped-btn--primary" onClick={() => avancarStatus(pedidoSelecionado)}>
                         <FiChevronRight size={16}/> {STATUS_LABELS[
-                          pedidoSelecionado.status === 'preparando' && (pedidoSelecionado.cliente_dados?.tipo_pedido || 'ENTREGA') === 'RETIRADA'
+                          pedidoSelecionado.status === 'preparando' && (pedidoSelecionado.clienteDados?.tipo_pedido || 'ENTREGA') === 'RETIRADA'
                             ? 'concluido'
                             : STATUS_ORDER[STATUS_ORDER.indexOf(pedidoSelecionado.status) + 1]
                         ] || 'Avançar'}
@@ -835,50 +752,12 @@ export default function Pedidos() {
             </p>
             <div className="confirm-modal-actions">
               <button className="btn btn-ghost" onClick={() => setShowConfirmModal(false)}>Cancelar</button>
-              <button className="btn btn-danger" onClick={excluirPedidoConfirmado}>Excluir Pedido</button>
+              <button className="btn btn-danger" onClick={confirmarExclusao}>Excluir Pedido</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Previsão Manual */}
-      {showManualTimersModal && (
-        <div className="modal-overlay">
-          <div className="confirm-modal-card slide-up">
-            <h3 className="confirm-modal-title" style={{ textAlign: 'left', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><FiClock /> Definir Tempo Manual</h3>
-            <p className="confirm-modal-message" style={{ textAlign: 'left', marginBottom: 24 }}>
-              Como os timers automáticos estão sendo desativados, você precisa definir uma previsão fixa para mostrar aos clientes.
-            </p>
-            <form onSubmit={confirmManualTimers}>
-              <div className="input-group" style={{ marginBottom: 16 }}>
-                <label>Tempo para <strong>Entrega</strong></label>
-                <input 
-                  type="text" 
-                  className="input" 
-                  placeholder="Ex: ~50 min, em 1h..."
-                  value={manualTimeEntrega}
-                  onChange={e => setManualTimeEntrega(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="input-group" style={{ marginBottom: 24 }}>
-                <label>Tempo para <strong>Retirada</strong></label>
-                <input 
-                  type="text" 
-                  className="input" 
-                  placeholder="Ex: ~30 min, 20-30 min..."
-                  value={manualTimeRetirada}
-                  onChange={e => setManualTimeRetirada(e.target.value)}
-                />
-              </div>
-              <div className="confirm-modal-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowManualTimersModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">Salvar Previsão</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,9 +1,54 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { api } from '../../lib/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiSave, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiSave, FiPlus, FiTrash2, FiRefreshCw, FiCheckCircle } from 'react-icons/fi';
+import { HexColorPicker } from 'react-colorful';
 import toast from 'react-hot-toast';
 import './Configuracoes.css';
+
+const useClickOutside = (ref, handler) => {
+  useEffect(() => {
+    const listener = (event) => {
+      if (!ref.current || ref.current.contains(event.target)) {
+        return;
+      }
+      handler(event);
+    };
+    document.addEventListener("mousedown", listener);
+    document.addEventListener("touchstart", listener);
+    return () => {
+      document.removeEventListener("mousedown", listener);
+      document.removeEventListener("touchstart", listener);
+    };
+  }, [ref, handler]);
+};
+
+function ColorPickerField({ label, value, onChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const popover = useRef();
+
+  const close = useCallback(() => setIsOpen(false), []);
+  useClickOutside(popover, close);
+
+  return (
+    <div className="input-group">
+      <label>{label}</label>
+      <div className="config-color-row" style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
+        <div 
+          onClick={() => setIsOpen(true)}
+          style={{ width: 36, height: 36, borderRadius: 8, background: value, border: '1px solid var(--border)', flexShrink: 0, cursor: 'pointer' }} 
+        />
+        <input className="input" value={value} onChange={e => onChange(e.target.value)} style={{ flex: 1 }} />
+        
+        {isOpen && (
+          <div className="popover" ref={popover} style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, marginTop: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', borderRadius: 8 }}>
+            <HexColorPicker color={value} onChange={onChange} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Configuracoes() {
   const { lojista, fetchLojista, user } = useAuth();
@@ -22,42 +67,64 @@ export default function Configuracoes() {
   const [adicionais, setAdicionais] = useState([]);
   const [novoAdicional, setNovoAdicional] = useState({ nome: '', preco: '' });
 
+  const [bancoForm, setBancoForm] = useState({ tipoChave: 'cpf', chavePix: '', nomeTitular: '' });
+  const [salvandoBanco, setSalvandoBanco] = useState(false);
   useEffect(() => {
     if (!lojista) return;
     setForm({ 
       nome: lojista.nome, 
       descricao: lojista.descricao || '', 
       slug: lojista.slug || '',
-      cor_principal: lojista.cor_principal || '#f97316',
-      cor_secundaria: lojista.cor_secundaria || '#111827',
-      cor_fundo_cards: lojista.cor_fundo_cards || '#1a1a2e',
-      cor_texto_normal: lojista.cor_texto_normal || '#ffffff',
-      cor_texto_secundaria: lojista.cor_texto_secundaria || '#9ca3af',
-      logo_url: lojista.logo_url || '',
-      capa_url: lojista.capa_url || '',
-      tempo_novo: lojista.tempo_novo ?? 5,
-      tempo_preparando: lojista.tempo_preparando ?? 30,
-      tempo_entrega: lojista.tempo_entrega ?? 40,
-      tempo_concluido: lojista.tempo_concluido ?? 10
+      cor_principal: lojista.corPrincipal || '#f97316',
+      cor_secundaria: lojista.corSecundaria || '#111827',
+      cor_fundo_cards: lojista.corFundoCards || '#1a1a2e',
+      cor_texto_normal: lojista.corTextoNormal || '#ffffff',
+      cor_texto_secundaria: lojista.corTextoSecundaria || '#9ca3af',
+      logo_url: lojista.logoUrl || '',
+      capa_url: lojista.capaUrl || '',
+      tempo_novo: lojista.tempoNovo ?? 5,
+      tempo_preparando: lojista.tempoPreparando ?? 30,
+      tempo_entrega: lojista.tempoEntrega ?? 40,
+      tempo_concluido: lojista.tempoConcluido ?? 10
     });
     loadTaxas();
     loadCategorias();
     loadAdicionais();
+    loadFinanceiro();
   }, [lojista]);
 
+  async function loadFinanceiro() {
+    try {
+      const data = await api.get('/lojistas/financeiro');
+      if (data && data.dadosBancarios) {
+        setBancoForm({
+          tipoChave: data.dadosBancarios.tipoChave || 'cpf',
+          chavePix: data.dadosBancarios.chavePix || '',
+          nomeTitular: data.dadosBancarios.nomeTitular || ''
+        });
+      }
+    } catch(e) {}
+  }
+
   async function loadTaxas() {
-    const { data } = await supabase.from('taxas_entrega').select('*').eq('lojista_id', lojista.id);
-    setTaxas(data || []);
+    try {
+      const data = await api.get('/lojistas/taxas');
+      setTaxas(data || []);
+    } catch(e) {}
   }
 
   async function loadCategorias() {
-    const { data } = await supabase.from('categorias').select('*').eq('lojista_id', lojista.id).order('ordem');
-    setCategorias(data || []);
+    try {
+      const data = await api.get('/categorias');
+      setCategorias(data || []);
+    } catch(e) {}
   }
 
   async function loadAdicionais() {
-    const { data } = await supabase.from('adicionais').select('*').eq('lojista_id', lojista.id).order('nome');
-    setAdicionais(data || []);
+    try {
+      const data = await api.get('/lojistas/adicionais');
+      setAdicionais(data || []);
+    } catch(e) {}
   }
 
   async function salvarPerfil(e) {
@@ -69,98 +136,140 @@ export default function Configuracoes() {
       nome: form.nome,
       descricao: form.descricao,
       slug: form.slug,
-      cor_principal: form.cor_principal,
-      cor_secundaria: form.cor_secundaria,
-      cor_fundo_cards: form.cor_fundo_cards,
-      cor_texto_normal: form.cor_texto_normal,
-      cor_texto_secundaria: form.cor_texto_secundaria,
-      logo_url: form.logo_url,
-      capa_url: form.capa_url,
-      tempo_novo: form.tempo_novo,
-      tempo_preparando: form.tempo_preparando,
-      tempo_entrega: form.tempo_entrega,
-      tempo_concluido: form.tempo_concluido,
+      corPrincipal: form.cor_principal,
+      corSecundaria: form.cor_secundaria,
+      corFundoCards: form.cor_fundo_cards,
+      corTextoNormal: form.cor_texto_normal,
+      corTextoSecundaria: form.cor_texto_secundaria,
+      logoUrl: form.logo_url,
+      capaUrl: form.capa_url,
+      tempoNovo: parseInt(form.tempo_novo, 10),
+      tempoPreparando: parseInt(form.tempo_preparando, 10),
+      tempoEntrega: parseInt(form.tempo_entrega, 10),
+      tempoConcluido: parseInt(form.tempo_concluido, 10),
     };
 
-    const { error } = await supabase.from('lojistas').update(camposPermitidos).eq('id', lojista.id);
-    if (error) toast.error('Erro ao salvar');
-    else { toast.success('Perfil atualizado!'); fetchLojista(user.id); }
+    try {
+      await api.patch('/lojistas/config', camposPermitidos);
+      toast.success('Perfil atualizado!');
+      fetchLojista();
+    } catch(e) {
+      toast.error('Erro ao salvar perfil');
+    }
+  }
+
+  async function salvarBanco(e) {
+    e.preventDefault();
+    setSalvandoBanco(true);
+    try {
+      await api.post('/lojistas/financeiro/dados-bancarios', bancoForm);
+      toast.success('Chave PIX salva com sucesso!');
+    } catch(e) {
+      toast.error('Erro ao salvar chave PIX');
+    }
+    setSalvandoBanco(false);
   }
 
   async function handleUploadLogo(e) {
     const file = e.target.files[0];
     if (!file) return;
     setUploadingLogo(true);
-    const ext = file.name.split('.').pop();
-    const path = `logos/${lojista.id}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('imagens').upload(path, file, { upsert: true });
-    if (error) { toast.error('Erro no upload'); setUploadingLogo(false); return; }
-    const { data: urlData } = supabase.storage.from('imagens').getPublicUrl(path);
-    setForm(prev => ({ ...prev, logo_url: urlData.publicUrl }));
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+      setForm(prev => ({ ...prev, logo_url: res.url }));
+    } catch(err) {
+      toast.error('Erro no upload');
+    }
     setUploadingLogo(false);
-    toast.success('Logo enviada, não esqueça de Salvar!');
   }
 
   async function handleUploadCapa(e) {
     const file = e.target.files[0];
     if (!file) return;
     setUploadingCapa(true);
-    const ext = file.name.split('.').pop();
-    const path = `capas/${lojista.id}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('imagens').upload(path, file, { upsert: true });
-    if (error) { toast.error('Erro no upload'); setUploadingCapa(false); return; }
-    const { data: urlData } = supabase.storage.from('imagens').getPublicUrl(path);
-    setForm(prev => ({ ...prev, capa_url: urlData.publicUrl }));
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+      setForm(prev => ({ ...prev, capa_url: res.url }));
+    } catch(err) {
+      toast.error('Erro no upload');
+    }
     setUploadingCapa(false);
-    toast.success('Capa enviada, não esqueça de Salvar!');
   }
+
+
 
   async function addTaxa() {
     if (!novaTaxa.bairro || !novaTaxa.valor) return toast.error('Preencha bairro e valor');
-    const { error } = await supabase.from('taxas_entrega').insert({ ...novaTaxa, valor: parseFloat(novaTaxa.valor), lojista_id: lojista.id });
-    if (error) toast.error('Erro');
-    else { toast.success('Taxa adicionada!'); setNovaTaxa({ bairro: '', valor: '' }); loadTaxas(); }
+    try {
+      await api.post('/lojistas/taxas', { bairro: novaTaxa.bairro, valor: parseFloat(novaTaxa.valor) });
+      toast.success('Taxa adicionada!');
+      setNovaTaxa({ bairro: '', valor: '' });
+      loadTaxas();
+    } catch(e) {
+      toast.error('Erro ao adicionar taxa');
+    }
   }
 
   async function removeTaxa(id) {
-    await supabase.from('taxas_entrega').delete().eq('id', id);
-    toast.success('Removida');
-    loadTaxas();
+    try {
+      await api.delete(`/lojistas/taxas/${id}`);
+      toast.success('Removida');
+      loadTaxas();
+    } catch(e) {
+      toast.error('Erro ao remover taxa');
+    }
   }
 
   async function addCategoria() {
     if (!novaCat) return;
     const ordem = categorias.length + 1;
-    const { error } = await supabase.from('categorias').insert({ nome: novaCat, ordem, lojista_id: lojista.id });
-    if (error) toast.error('Erro');
-    else { toast.success('Categoria criada!'); setNovaCat(''); loadCategorias(); }
+    try {
+      await api.post('/categorias', { nome: novaCat, ordem });
+      toast.success('Categoria criada!');
+      setNovaCat('');
+      loadCategorias();
+    } catch(e) {
+      toast.error('Erro ao criar categoria');
+    }
   }
 
   async function removeCategoria(id) {
-    await supabase.from('categorias').delete().eq('id', id);
-    toast.success('Removida');
-    loadCategorias();
+    try {
+      await api.delete(`/categorias/${id}`);
+      toast.success('Removida');
+      loadCategorias();
+    } catch(e) {
+      toast.error('Erro ao remover categoria');
+    }
   }
 
   async function addAdicional() {
     if (!novoAdicional.nome) return toast.error('Preencha o nome do adicional');
-    const { error } = await supabase.from('adicionais').insert({
-      nome: novoAdicional.nome,
-      preco: parseFloat(novoAdicional.preco) || 0,
-      lojista_id: lojista.id
-    });
-    if (error) toast.error('Erro ao salvar adicional');
-    else {
+    try {
+      await api.post('/lojistas/adicionais', {
+        nome: novoAdicional.nome,
+        preco: parseFloat(novoAdicional.preco) || 0
+      });
       toast.success('Adicional criado!');
       setNovoAdicional({ nome: '', preco: '' });
       loadAdicionais();
+    } catch(e) {
+      toast.error('Erro ao salvar adicional');
     }
   }
 
   async function removeAdicional(id) {
-    await supabase.from('adicionais').delete().eq('id', id);
-    toast.success('Removido');
-    loadAdicionais();
+    try {
+      await api.delete(`/lojistas/adicionais/${id}`);
+      toast.success('Removido');
+      loadAdicionais();
+    } catch(e) {
+      toast.error('Erro ao remover adicional');
+    }
   }
 
   if (!lojista) {
@@ -222,41 +331,11 @@ export default function Configuracoes() {
         <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <h3 className="config-section-title">Aparência (White Label)</h3>
           <div className="form-grid">
-            <div className="input-group">
-              <label>Cor Principal (Destaques)</label>
-              <div className="config-color-row">
-                <input type="color" className="config-color-input" value={form.cor_principal} onChange={e => setForm({ ...form, cor_principal: e.target.value })} />
-                <input className="input" value={form.cor_principal} onChange={e => setForm({ ...form, cor_principal: e.target.value })} style={{ flex: 1 }} />
-              </div>
-            </div>
-            <div className="input-group">
-              <label>Cor Secundária (Fundo da Página)</label>
-              <div className="config-color-row">
-                <input type="color" className="config-color-input" value={form.cor_secundaria} onChange={e => setForm({ ...form, cor_secundaria: e.target.value })} />
-                <input className="input" value={form.cor_secundaria} onChange={e => setForm({ ...form, cor_secundaria: e.target.value })} style={{ flex: 1 }} />
-              </div>
-            </div>
-            <div className="input-group">
-              <label>Cor Terciária (Fundo dos Cards)</label>
-              <div className="config-color-row">
-                <input type="color" className="config-color-input" value={form.cor_fundo_cards} onChange={e => setForm({ ...form, cor_fundo_cards: e.target.value })} />
-                <input className="input" value={form.cor_fundo_cards} onChange={e => setForm({ ...form, cor_fundo_cards: e.target.value })} style={{ flex: 1 }} />
-              </div>
-            </div>
-            <div className="input-group">
-              <label>Cor do Texto Normal</label>
-              <div className="config-color-row">
-                <input type="color" className="config-color-input" value={form.cor_texto_normal} onChange={e => setForm({ ...form, cor_texto_normal: e.target.value })} />
-                <input className="input" value={form.cor_texto_normal} onChange={e => setForm({ ...form, cor_texto_normal: e.target.value })} style={{ flex: 1 }} />
-              </div>
-            </div>
-            <div className="input-group">
-              <label>Cor do Texto Secundário</label>
-              <div className="config-color-row">
-                <input type="color" className="config-color-input" value={form.cor_texto_secundaria} onChange={e => setForm({ ...form, cor_texto_secundaria: e.target.value })} />
-                <input className="input" value={form.cor_texto_secundaria} onChange={e => setForm({ ...form, cor_texto_secundaria: e.target.value })} style={{ flex: 1 }} />
-              </div>
-            </div>
+            <ColorPickerField label="Cor Principal (Destaques)" value={form.cor_principal} onChange={c => setForm({ ...form, cor_principal: c })} />
+            <ColorPickerField label="Cor Secundária (Fundo da Página)" value={form.cor_secundaria} onChange={c => setForm({ ...form, cor_secundaria: c })} />
+            <ColorPickerField label="Cor Terciária (Fundo dos Cards)" value={form.cor_fundo_cards} onChange={c => setForm({ ...form, cor_fundo_cards: c })} />
+            <ColorPickerField label="Cor do Texto Normal" value={form.cor_texto_normal} onChange={c => setForm({ ...form, cor_texto_normal: c })} />
+            <ColorPickerField label="Cor do Texto Secundário" value={form.cor_texto_secundaria} onChange={c => setForm({ ...form, cor_texto_secundaria: c })} />
           </div>
  
           <div className="form-grid">
@@ -304,7 +383,39 @@ export default function Configuracoes() {
           <button className="btn btn-primary" type="submit" style={{ marginTop: 10, width: 'fit-content', padding: '12px 28px', fontSize: '0.95rem' }}><FiSave /> Salvar Configurações</button>
         </section>
       </form>
- 
+
+      {/* Financeiro (PIX) */}
+      <form onSubmit={salvarBanco}>
+        <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <h3 className="config-section-title">Financeiro / Recebimento PIX</h3>
+          <p className="config-section-desc">Cadastre sua Chave PIX para habilitar e receber os pagamentos de PIX feitos pelo site diretamente na sua conta. Rápido, seguro e sem taxas ocultas.</p>
+          
+          <div className="form-grid">
+            <div className="input-group">
+              <label>Tipo de Chave PIX</label>
+              <select className="input" value={bancoForm.tipoChave} onChange={e => setBancoForm({ ...bancoForm, tipoChave: e.target.value })}>
+                <option value="cpf">CPF</option>
+                <option value="cnpj">CNPJ</option>
+                <option value="email">E-mail</option>
+                <option value="telefone">Telefone</option>
+                <option value="aleatoria">Chave Aleatória</option>
+              </select>
+            </div>
+            <div className="input-group">
+              <label>Chave PIX</label>
+              <input className="input" value={bancoForm.chavePix} onChange={e => setBancoForm({ ...bancoForm, chavePix: e.target.value })} placeholder="Sua chave PIX" />
+            </div>
+            <div className="input-group" style={{ gridColumn: '1/-1' }}>
+              <label>Nome Completo do Titular</label>
+              <input className="input" value={bancoForm.nomeTitular} onChange={e => setBancoForm({ ...bancoForm, nomeTitular: e.target.value })} placeholder="Nome igual ao da conta bancária" />
+            </div>
+          </div>
+          <button className="btn btn-primary" type="submit" disabled={salvandoBanco} style={{ marginTop: 10, width: 'fit-content', padding: '12px 28px', fontSize: '0.95rem' }}>
+            <FiSave /> {salvandoBanco ? 'Salvando...' : 'Salvar Dados de Recebimento'}
+          </button>
+        </section>
+      </form>
+
       {/* Categorias */}
       <section className="card">
         <h3 className="config-section-title">Categorias</h3>
@@ -367,6 +478,9 @@ export default function Configuracoes() {
           {taxas.length === 0 && <p className="config-section-desc" style={{ margin: '8px 0 0 0' }}>Nenhuma taxa cadastrada.</p>}
         </div>
       </section>
+
+
+
     </div>
   );
 }

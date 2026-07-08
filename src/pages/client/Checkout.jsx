@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
-import { criarCobranca, obterNomeWhatsApp } from '../../lib/api';
-import { supabase } from '../../lib/supabase';
-import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiCheck, FiLogOut, FiList, FiClock, FiShoppingCart } from 'react-icons/fi';
+import { api } from '../../lib/apiClient';
+import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiCheck, FiLogOut, FiList, FiClock, FiShoppingCart, FiCopy } from 'react-icons/fi';
+import { FaPix, FaWhatsapp } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
 import './Checkout.css';
 
 export default function Checkout() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { items, updateQuantidade, removeItem, total, totalItems } = useCart();
+  const { items, updateQuantidade, removeItem, total, totalItems, clearCart } = useCart();
   
   // Lojista info
   const [lojistaId, setLojistaId] = useState(null);
@@ -27,7 +27,6 @@ export default function Checkout() {
   // Auth state
   const [whatsapp, setWhatsapp] = useState('');
   const [nome, setNome] = useState('');
-  const [isNovoCadastro, setIsNovoCadastro] = useState(false);
   const [clienteLogado, setClienteLogado] = useState(null);
   
   // Address state
@@ -53,43 +52,42 @@ export default function Checkout() {
   useEffect(() => {
     async function loadLojista() {
       try {
-        const safeSlug = slug ? slug.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]/g, '') : '';
-        const { data: loj } = await supabase.from('lojistas').select('id, nome, slug, logo_url, capa_url, cor_principal, cor_secundaria, cor_fundo_cards, cor_texto_normal, cor_texto_secundaria, aberto, descricao, pausar_timers, tempo_novo, tempo_preparando, tempo_entrega, tempo_concluido, tempo_manual_entrega, tempo_manual_retirada').eq('slug', safeSlug).single();
+        const loj = await api.get(`/cardapio/${slug}`);
         if (!loj) {
           toast.error('Restaurante não encontrado');
           return;
         }
-        if (loj) {
-          setLojistaId(loj.id);
-          setLojistaObj(loj);
-          if (loj.logo_url) {
-            try { localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url); } catch(e) {}
-            setCachedLogo(loj.logo_url);
-          }
-          
-          // Atualiza o título da aba e o favicon
-          if (loj.nome) document.title = `Checkout | ${loj.nome}`;
-          if (loj.logo_url) {
-            let link = document.querySelector("link[rel~='icon']");
-            if (!link) {
-              link = document.createElement('link');
-              link.rel = 'icon';
-              document.head.appendChild(link);
-            }
-            link.href = loj.logo_url;
-          }
 
-          const { data: b } = await supabase.from('taxas_entrega').select('*').eq('lojista_id', loj.id);
-          setBairros(b || []);
-
-          const { data: db } = await supabase.from('dados_bancarios_lojista').select('id').eq('lojista_id', loj.id).maybeSingle();
-          setTemPix(!!db);
-          if (!db) {
-            setFormaPagamento('DINHEIRO');
-          }
+        setLojistaId(loj.id);
+        setLojistaObj(loj);
+        if (loj.logo_url) {
+          try { localStorage.setItem(`lanchonet_logo_${slug}`, loj.logo_url); } catch(e) {}
+          setCachedLogo(loj.logo_url);
         }
+        
+        if (loj.nome) document.title = `Checkout | ${loj.nome}`;
+        if (loj.logo_url) {
+          let link = document.querySelector("link[rel~='icon']");
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = 'icon';
+            document.head.appendChild(link);
+          }
+          link.href = loj.logo_url;
+        }
+
+        setBairros(loj.taxasEntrega || []);
+
+        // Se houver chave PIX configurada, exibe a opção de PIX
+        if (loj.dadosBancarios && loj.dadosBancarios.chavePix) {
+          setTemPix(true);
+        } else {
+          setTemPix(false);
+          setFormaPagamento('MAQUININHA'); // fallback se não tiver PIX
+        }
+
       } catch (err) {
-        console.error("Erro crítico no loadLojista Checkout", err);
+        console.error("Erro ao carregar Checkout", err);
         toast.error("Erro ao carregar Checkout");
       } finally {
         setLoading(false);
@@ -98,70 +96,44 @@ export default function Checkout() {
     loadLojista();
   }, [slug]);
 
-  useEffect(() => {
-    if (whatsapp.length >= 10 && lojistaId) {
-      const checkSeExiste = async () => {
-        const { data } = await supabase.from('clientes')
-          .select('id')
-          .eq('lojista_id', lojistaId)
-          .eq('whatsapp', whatsapp)
-          .maybeSingle();
-        
-        const novo = !data;
-        setIsNovoCadastro(novo);
-        
-        if (novo) {
-          try {
-            const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
-            const res = await obterNomeWhatsApp(lojistaId, numeroWpp);
-            if (res && (res.name || res.pushName)) {
-              setNome(res.name || res.pushName);
-            }
-          } catch (e) {
-            console.error("Erro ao buscar nome do whatsapp:", e);
-          }
-        } else {
-          try {
-            const { data: cliData } = await supabase.rpc('get_cliente_by_phone', { 
-              p_telefone: whatsapp, 
-              p_lojista_id: lojistaId 
-            });
-            if (cliData) {
-              const { data: cliFull } = await supabase.from('clientes')
-                .select('*')
-                .eq('id', cliData.id)
-                .single();
-              if (cliFull && (!cliFull.nome || cliFull.nome === '—' || cliFull.nome.trim() === '')) {
-                const numeroWpp = whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp;
-                const res = await obterNomeWhatsApp(lojistaId, numeroWpp);
-                const wppName = res?.name || res?.pushName;
-                if (wppName) {
-                  await supabase.from('clientes').update({ nome: wppName }).eq('id', cliFull.id);
-                }
-              }
-            }
-          } catch (e) {}
-        }
-      };
-      checkSeExiste();
-    } else {
-      setIsNovoCadastro(false);
-    }
-  }, [whatsapp, lojistaId]);
+  const [buscandoNome, setBuscandoNome] = useState(false);
 
-  // Auth Functions
+  useEffect(() => {
+    if (whatsapp.length >= 10 && !nome) {
+      const timer = setTimeout(() => {
+        handleFetchName();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [whatsapp]);
+
+  async function handleFetchName() {
+    if (whatsapp.length < 10) return;
+    if (nome) return; // Não sobrescreve se o usuário já digitou
+    
+    setBuscandoNome(true);
+    try {
+      const res = await api.get(`/cardapio/${slug}/fetch-name/${whatsapp}`);
+      if (res && res.name) {
+        setNome(res.name);
+        toast.success(`Nome ${res.name} encontrado!`);
+      }
+    } catch (err) {
+      // Falhou silenciosamente, o usuário pode digitar manualmente
+    }
+    setBuscandoNome(false);
+  }
+
   async function handleLogin() {
     if (!whatsapp) return toast.error('Preencha seu WhatsApp');
-    if (isNovoCadastro && !nome) return toast.error('Por favor, informe seu nome');
     setEnviando(true);
     
-    // Check if client exists
-    const { data: cliente } = await supabase.rpc('get_cliente_by_phone', {
-      p_telefone: whatsapp,
-      p_lojista_id: lojistaId
-    });
+    try {
+      const cliente = await api.post(`/cardapio/${slug}/login`, {
+        whatsapp,
+        nome
+      });
       
-    if (cliente) {
       setClienteLogado(cliente);
       try { localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(cliente)); } catch(e) {}
       if (cliente.endereco) {
@@ -173,23 +145,8 @@ export default function Checkout() {
       }
       toast.success(`Bem-vindo, ${cliente.nome || 'cliente'}!`);
       setStep(3);
-    } else {
-      // Register
-      const { data: novoCli, error } = await supabase.rpc('register_cliente_secure', {
-        p_lojista_id: lojistaId,
-        p_whatsapp: whatsapp,
-        p_nome: nome,
-        p_senha_hash: 'na'
-      });
-      
-      if (error) {
-        toast.error(`Erro ao registrar: ${error.message || error.details}`);
-      } else {
-        setClienteLogado(novoCli);
-        try { localStorage.setItem(`lanchonet_client_${slug}`, JSON.stringify(novoCli)); } catch(e) {}
-        toast.success('Pronto!');
-        setStep(3);
-      }
+    } catch (error) {
+      toast.error('Erro ao conectar cliente.');
     }
     setEnviando(false);
   }
@@ -206,11 +163,7 @@ export default function Checkout() {
       if (!endereco.bairro_id) return toast.error('Selecione um bairro');
       if (!endereco.rua) return toast.error('Informe a rua');
       if (!endereco.numero && !endereco.semNumero) return toast.error('Informe o número ou marque Sem número');
-      
-      // Save address to client profile
-      supabase.from('clientes').update({ endereco: JSON.stringify(endereco), bairro_id: endereco.bairro_id }).eq('id', clienteLogado.id).then();
     }
-    
     setStep(4);
   }
 
@@ -221,7 +174,7 @@ export default function Checkout() {
       const itensPayload = items.map(i => ({
         id: i.id,
         nome: i.adicionais?.length > 0 ? `${i.nome} (+ Adicionais)` : i.nome,
-        preco: i.precoCalculado, // N8N/AbacatePay usará esse campo
+        preco: i.precoCalculado, 
         preco_base: parseFloat(i.preco),
         preco_calculado: i.precoCalculado,
         quantidade: i.quantidade,
@@ -229,7 +182,6 @@ export default function Checkout() {
         adicionais: i.adicionais
       }));
 
-      // Adicionar taxa de entrega como um item para o AbacatePay cobrar corretamente
       if (taxaEntrega > 0) {
         itensPayload.push({
           id: 'taxa-entrega',
@@ -244,10 +196,10 @@ export default function Checkout() {
       }
 
       const payload = {
-        lojista_id: lojistaId,
+        cliente_id: clienteLogado.id,
         cliente: {
           nome: clienteLogado.nome,
-          whatsapp: clienteLogado.whatsapp,
+          whatsapp: clienteLogado.telefone || whatsapp,
           tipo_pedido: tipoPedido,
           endereco: tipoPedido === 'ENTREGA' ? endereco : null,
           bairro: tipoPedido === 'ENTREGA' ? bairros.find(b => b.id === endereco.bairro_id)?.bairro : null,
@@ -260,166 +212,60 @@ export default function Checkout() {
         total_produtos: total
       };
 
-      // 1. Criar o pedido no banco de dados primeiro!
-      const { data: pedidoDb, error: errPedido } = await supabase.from('pedidos').insert({
-        lojista_id: lojistaId,
-        cliente_id: clienteLogado.id,
-        cliente_dados: payload.cliente,
-        endereco_entrega: payload.cliente.endereco,
-        itens: payload.itens,
-        subtotal: payload.total_produtos,
-        taxa_entrega: payload.cliente.taxa_entrega,
-        total: payload.cliente.total_final,
-        status: 'novo'
-      }).select().single();
+      const { pedido, pixData: novoPixData } = await api.post(`/cardapio/${slug}/checkout`, payload);
 
-      if (errPedido) {
-        console.error('Supabase errPedido:', errPedido);
-        toast.error(`Erro ao registrar pedido: ${errPedido.message || errPedido.details || JSON.stringify(errPedido)}`);
-        setEnviando(false);
-        return;
-      }
-
-      // 2. Se for PIX, chamar a integração para gerar QR Code
       if (formaPagamento === 'PIX') {
-        const result = await criarCobranca(lojistaId, payload.itens, { ...payload.cliente, pedido_id: pedidoDb.id });
-        const resultUrl = result.url || result.data?.url;
+        const resultUrl = novoPixData?.url || novoPixData?.data?.url;
         
-        if (resultUrl || result.data?.brCode) {
+        if (novoPixData?.qrCodePayload) {
           setPixData({
-            ...result,
-            url: resultUrl,
-            qrCode: result.qrCode || result.data?.qrCode || result.data?.brCodeBase64,
-            pixCopiaECola: result.pixCopiaECola || result.data?.pixCopiaECola || result.data?.brCode
+            qrCodePayload: novoPixData.qrCodePayload,
+            pedidoId: pedido.id,
+            totalPix: total + taxaEntrega
           });
+          clearCart();
+        } else if (resultUrl || novoPixData?.data?.brCode) {
+          setPixData({
+            url: resultUrl,
+            qrCode: novoPixData.qrCode || novoPixData.data?.qrCode || novoPixData.data?.brCodeBase64,
+            pixCopiaECola: novoPixData.pixCopiaECola || novoPixData.data?.pixCopiaECola || novoPixData.data?.brCode,
+            pedidoId: pedido.id,
+            totalPix: total + taxaEntrega
+          });
+          clearCart();
         } else {
           toast.error('Pedido salvo, mas erro ao gerar PIX');
+          clearCart();
+          navigate(`/${slug}/pedidos`);
         }
       } else {
-        // Dinheiro ou Maquininha: já está salvo no DB!
         toast.success('Pedido enviado com sucesso!');
+        clearCart();
         navigate(`/${slug}/pedidos`);
       }
-
-      // Enviar mensagem de comanda via n8n
-      if (!errPedido && clienteLogado.whatsapp) {
-        try {
-          const numeroWpp = clienteLogado.whatsapp.length <= 11 ? `55${clienteLogado.whatsapp}` : clienteLogado.whatsapp;
-          
-          // Itens formatados
-          let itensTexto = items.map(i => {
-            let itemStr = `• *${i.quantidade}x ${i.nome}* — R$ ${(i.precoCalculado * i.quantidade).toFixed(2)}`;
-            if (i.adicionais && i.adicionais.length > 0) {
-              itemStr += `\n  ↳ Adicionais: ${i.adicionais.map(a => a.nome).join(', ')}`;
-            }
-            if (i.observacao) {
-              itemStr += `\n  ↳ Obs: ${i.observacao}`;
-            }
-            return itemStr;
-          }).join('\n');
-
-          // Calcular previsão de tempo
-          let tempoEstimado = '';
-          if (lojistaObj.pausar_timers) {
-            // Se timers estiverem pausados, usa a previsão manual enviada pelo admin
-            tempoEstimado = tipoPedido === 'ENTREGA' ? lojistaObj.tempo_manual_entrega : lojistaObj.tempo_manual_retirada;
-          } else {
-            // Timers automáticos
-            const tempoNovo = lojistaObj.tempo_novo;
-            const tempoPreparando = lojistaObj.tempo_preparando;
-            const tempoEntrega = lojistaObj.tempo_entrega;
-            if (tempoNovo || tempoPreparando || tempoEntrega) {
-              const minutos = (tempoNovo ?? 5) + (tempoPreparando ?? 30) + (tipoPedido === 'ENTREGA' ? (tempoEntrega ?? 40) : 0);
-              tempoEstimado = `~${minutos} min`;
-            }
-          }
-
-          // Bloco de pagamento
-          let pagamentoTexto = '';
-          if (formaPagamento === 'PIX') {
-            pagamentoTexto = `💠 *Pagamento:* PIX\n   ↳ O QR Code foi enviado no site. Aguarde confirmação automática.`;
-          } else if (formaPagamento === 'DINHEIRO') {
-            pagamentoTexto = `💵 *Pagamento:* Dinheiro`;
-            if (trocoPara && parseFloat(trocoPara) > 0) {
-              const troco = parseFloat(trocoPara) - payload.cliente.total_final;
-              pagamentoTexto += `\n   ↳ Troco para: R$ ${parseFloat(trocoPara).toFixed(2)}`;
-              if (troco > 0) pagamentoTexto += ` _(troco de R$ ${troco.toFixed(2)})_`;
-            } else {
-              pagamentoTexto += `\n   ↳ Sem troco necessário`;
-            }
-          } else if (formaPagamento === 'MAQUININHA') {
-            pagamentoTexto = `💳 *Pagamento:* Maquininha (débito/crédito)`;
-          }
-
-          // Bloco de entrega
-          let entregaTexto = '';
-          if (tipoPedido === 'ENTREGA') {
-            const nomeBairro = bairros.find(b => b.id === endereco.bairro_id)?.bairro || '';
-            const ruaNum = `${endereco.rua}, ${endereco.semNumero ? 'S/N' : endereco.numero}`;
-            const complementoStr = endereco.complemento ? `, ${endereco.complemento}` : '';
-            const referenciaStr = endereco.referencia ? `\n   ↳ Referência: ${endereco.referencia}` : '';
-            entregaTexto = `🛵 *Tipo:* Entrega\n📍 *Endereço:* ${ruaNum}${complementoStr} — ${nomeBairro}${referenciaStr}`;
-            if (taxaEntrega > 0) {
-              entregaTexto += `\n🪙 *Taxa de entrega:* R$ ${taxaEntrega.toFixed(2)}`;
-            }
-          } else {
-            entregaTexto = `🛍️ *Tipo:* Retirada no Balcão`;
-          }
-
-          let textMsg = `📋 *PEDIDO CONFIRMADO! #${pedidoDb.id.slice(0, 6).toUpperCase()}*\n`;
-          textMsg += `🏪 *${lojistaObj.nome}*\n`;
-          textMsg += `━━━━━━━━━━━━━━━━━━\n`;
-          textMsg += `👤 *Cliente:* ${clienteLogado.nome}\n\n`;
-          textMsg += `🛒 *Itens do Pedido:*\n${itensTexto}\n\n`;
-          textMsg += `━━━━━━━━━━━━━━━━━━\n`;
-          textMsg += `${entregaTexto}\n\n`;
-          textMsg += `${pagamentoTexto}\n\n`;
-          textMsg += `━━━━━━━━━━━━━━━━━━\n`;
-          textMsg += `💰 *Subtotal:* R$ ${total.toFixed(2)}\n`;
-          if (tipoPedido === 'ENTREGA' && taxaEntrega > 0) {
-            textMsg += `🪙 *Entrega:* R$ ${taxaEntrega.toFixed(2)}\n`;
-          }
-          textMsg += `🔥 *Total:* *R$ ${payload.cliente.total_final.toFixed(2)}*\n`;
-          if (tempoEstimado) {
-            textMsg += `\n⏱️ *Previsão:* ${tempoEstimado}`;
-          }
-
-          await fetch('/webhook/whatsapp-status-update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              lojista_id: lojistaId,
-              telefone: numeroWpp,
-              mensagem: textMsg
-            })
-          });
-        } catch (e) {
-          console.error('Erro ao enviar comanda via wpp', e);
-        }
-      }
-
     } catch (err) {
-      toast.error('Erro de conexão');
+      toast.error('Erro ao finalizar pedido');
     }
     setEnviando(false);
   }
 
   // --- RENDERS ---
   const whiteLabelStyles = lojistaObj ? {
-    '--bg-primary': lojistaObj.cor_secundaria || '#111827',
-    '--bg-card': lojistaObj.cor_fundo_cards || 'rgba(128, 128, 128, 0.15)',
-    '--bg-secondary': lojistaObj.cor_fundo_cards || 'rgba(128, 128, 128, 0.08)',
-    '--bg-glass': lojistaObj.cor_fundo_cards || 'rgba(128, 128, 128, 0.2)',
-    '--primary': lojistaObj.cor_principal || '#f97316',
-    '--accent': lojistaObj.cor_principal || '#f97316',
-    '--accent-light': lojistaObj.cor_principal || '#fb923c',
-    '--accent-dark': lojistaObj.cor_principal || '#ea580c',
-    '--text-primary': lojistaObj.cor_texto_normal || '#ffffff',
-    '--text-secondary': lojistaObj.cor_texto_secundaria || '#9ca3af',
-    '--text-muted': lojistaObj.cor_texto_secundaria || '#64748b',
+    '--bg-primary': lojistaObj.corSecundaria || '#111827',
+    '--bg-card': lojistaObj.corFundoCards || 'rgba(128, 128, 128, 0.15)',
+    '--bg-secondary': lojistaObj.corFundoCards || 'rgba(128, 128, 128, 0.08)',
+    '--bg-glass': lojistaObj.corFundoCards || 'rgba(128, 128, 128, 0.2)',
+    '--primary': lojistaObj.corPrincipal || '#f97316',
+    '--accent': lojistaObj.corPrincipal || '#f97316',
+    '--accent-light': lojistaObj.corPrincipal || '#fb923c',
+    '--accent-dark': lojistaObj.corPrincipal || '#ea580c',
+    '--text-primary': lojistaObj.corTextoNormal || '#ffffff',
+    '--text-secondary': lojistaObj.corTextoSecundaria || '#9ca3af',
+    '--text-muted': lojistaObj.corTextoSecundaria || '#64748b',
     '--border': 'rgba(128, 128, 128, 0.2)',
     '--border-hover': 'rgba(128, 128, 128, 0.35)',
   } : {};
+
   if (loading) {
     return (
       <div style={{
@@ -432,11 +278,7 @@ export default function Checkout() {
         justifyContent: 'center',
         zIndex: 9999
       }}>
-        {cachedLogo ? (
-          <img src={cachedLogo} alt="Logo" style={{ width: 100, height: 100, borderRadius: '50%', marginBottom: 20, objectFit: 'contain', animation: 'pulse 1.5s infinite ease-in-out' }} />
-        ) : (
-          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid var(--accent, #f97316)', animation: 'spin 1s linear infinite', marginBottom: 20 }} />
-        )}
+        <div style={{ width: 60, height: 60, borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid var(--accent, #f97316)', animation: 'spin 1s linear infinite', marginBottom: 20 }} />
         <h2 style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: 600 }}>Carregando...</h2>
       </div>
     );
@@ -445,62 +287,107 @@ export default function Checkout() {
   if (pixData) {
     return (
       <div className="checkout-page" style={whiteLabelStyles}>
-        <div className="container">
-          <div className="pix-container slide-up" style={{ textAlign: 'center', padding: 40, background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', marginBottom: 20 }}>
-              <FiCheck size={32} />
+        <header className="checkout-header" style={{ 
+          background: lojistaObj?.capaUrl 
+            ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${lojistaObj.capaUrl}) center/cover no-repeat` 
+            : 'var(--bg-secondary)', 
+          borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {lojistaObj?.logoUrl && <img src={lojistaObj.logoUrl} alt="Logo" style={{ width: 45, height: 45, borderRadius: '50%', objectFit: 'contain' }} />}
+            <h2 style={{ fontSize: '1.1rem', color: lojistaObj?.capaUrl ? (lojistaObj.corFundoCards || '#ffffff') : 'var(--text-primary)', margin: 0 }}>
+              Pedido Realizado
+            </h2>
+          </div>
+          <button 
+            className="btn-voltar-header" 
+            onClick={() => navigate(`/${slug}/pedidos`)} 
+            style={lojistaObj?.capaUrl ? { 
+              background: 'rgba(255, 255, 255, 0.2)', 
+              border: '1px solid rgba(255, 255, 255, 0.3)', 
+              color: '#ffffff' 
+            } : {}}
+          >
+            <FiArrowLeft size={16} /> Voltar
+          </button>
+        </header>
+
+        <div className="container" style={{ padding: '24px 20px 80px', textAlign: 'center' }}>
+          
+          <div className="slide-up">
+            
+            <div style={{ 
+              width: 56, height: 56, borderRadius: '50%', background: 'var(--primary)', 
+              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              margin: '0 auto 16px', opacity: 0.9 
+            }}>
+              <FaPix size={28} />
             </div>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: 8 }}>Pague com PIX</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Escaneie o QR Code abaixo com o app do seu banco</p>
-            
-            {pixData.qrCode && (
-              <div style={{ background: '#fff', padding: 16, borderRadius: 12, display: 'inline-block', marginBottom: 24, boxShadow: 'var(--shadow-md)' }}>
-                <img src={pixData.qrCode} alt="QR Code PIX" style={{ width: 200, height: 200, display: 'block' }} />
-              </div>
-            )}
-            
-            {pixData.pixCopiaECola && (
-              <div style={{ marginBottom: 24, textAlign: 'left', maxWidth: 400, margin: '0 auto 24px' }}>
-                <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Ou use o Pix Copia e Cola:</p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 8, fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
-                    {pixData.pixCopiaECola}
+
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Pague via PIX</h2>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 24 }}>Escaneie o QR Code abaixo no app do seu banco</p>
+
+            {pixData.qrCodePayload && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ 
+                  display: 'inline-block', background: '#fff', padding: 12, 
+                  borderRadius: 12, border: '1px solid #e5e7eb', marginBottom: 16
+                }}>
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixData.qrCodePayload)}`} alt="QR Code PIX" style={{ display: 'block', width: 200, height: 200 }} />
+                </div>
+                
+                <div style={{ textAlign: 'left', background: 'var(--bg-card)', padding: '12px', borderRadius: 8, border: '1px dashed var(--border)' }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>Pix Copia e Cola:</p>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input 
+                      type="text" 
+                      value={pixData.qrCodePayload} 
+                      readOnly 
+                      className="input" 
+                      style={{ flex: 1, fontSize: '0.8rem', padding: '8px 12px', margin: 0, background: 'var(--bg-secondary)' }} 
+                    />
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ padding: '0 12px', borderRadius: 8, gap: 6 }} 
+                      onClick={() => { navigator.clipboard.writeText(pixData.qrCodePayload); toast.success('Copiado!'); }}
+                    >
+                      <FiCopy size={16} /> Copiar
+                    </button>
                   </div>
-                  <button className="btn btn-primary" style={{ padding: '0 20px', flexShrink: 0 }} onClick={() => { navigator.clipboard.writeText(pixData.pixCopiaECola); toast.success('Copiado!'); }}>
-                    Copiar
-                  </button>
                 </div>
               </div>
             )}
-            
-            {pixData.url && (
-              <div style={{ maxWidth: 400, margin: '0 auto 24px' }}>
-                <a href={pixData.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-full btn-lg">
-                  Abrir no App do Banco
-                </a>
-              </div>
-            )}
 
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px dashed var(--border)' }}>
-              <p className="pix-total" style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>Total a pagar</p>
-              <p style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary)' }}>R$ {(total + taxaEntrega).toFixed(2)}</p>
+            <div style={{ margin: '24px 0', padding: '16px 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 4 }}>Total do Pedido</p>
+              <h3 style={{ fontSize: '2rem', color: 'var(--primary)', fontWeight: 800 }}>R$ {(pixData.totalPix || 0).toFixed(2)}</h3>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
-              <button className="btn btn-primary btn-lg btn-full" onClick={() => navigate(`/${slug}/pedidos`)}>
-                Acompanhar pelo Site
-              </button>
+
+            <div style={{ textAlign: 'left' }}>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: 12, fontWeight: 500, textAlign: 'center' }}>
+                Já realizou o pagamento?
+              </p>
               <button 
-                className="btn btn-secondary btn-lg btn-full" 
+                className="btn" 
+                style={{ width: '100%', gap: 8, justifyContent: 'center', height: 48, marginBottom: 12, background: '#22c55e', color: '#fff', border: 'none' }}
                 onClick={() => {
                   const num = (lojistaObj?.telefone || '').replace(/\D/g, '');
-                  if (num) window.open(`https://wa.me/55${num}`, '_blank');
+                  if (num) window.open(`https://wa.me/55${num}?text=Ol%C3%A1%21+Aqui+est%C3%A1+o+comprovante+do+meu+pedido+%23${pixData.pedidoId?.substring(0,6).toUpperCase()}`, '_blank');
                   else window.open(`https://wa.me/`, '_blank');
                 }}
               >
-                Acompanhar pelo WhatsApp
+                <FaWhatsapp size={20} /> Enviar Comprovante
+              </button>
+
+              <button 
+                className="btn btn-secondary" 
+                style={{ width: '100%', justifyContent: 'center', height: 48 }}
+                onClick={() => navigate(`/${slug}/pedidos`)}
+              >
+                Acompanhar Pedido
               </button>
             </div>
+
           </div>
         </div>
       </div>
@@ -510,21 +397,21 @@ export default function Checkout() {
   return (
     <div className="checkout-page" style={whiteLabelStyles}>
       <header className="checkout-header" style={{ 
-        background: lojistaObj?.capa_url 
-          ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${lojistaObj.capa_url}) center/cover no-repeat` 
+        background: lojistaObj?.capaUrl 
+          ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${lojistaObj.capaUrl}) center/cover no-repeat` 
           : 'var(--bg-secondary)', 
         borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {lojistaObj?.logo_url && <img src={lojistaObj.logo_url} alt="Logo" style={{ width: 45, height: 45, borderRadius: '50%', objectFit: 'contain' }} />}
-          <h2 style={{ fontSize: '1.1rem', color: lojistaObj?.capa_url ? (lojistaObj.cor_fundo_cards || '#ffffff') : 'var(--text-primary)', margin: 0 }}>
+          {lojistaObj?.logoUrl && <img src={lojistaObj.logoUrl} alt="Logo" style={{ width: 45, height: 45, borderRadius: '50%', objectFit: 'contain' }} />}
+          <h2 style={{ fontSize: '1.1rem', color: lojistaObj?.capaUrl ? (lojistaObj.corFundoCards || '#ffffff') : 'var(--text-primary)', margin: 0 }}>
             {step === 1 ? 'Revisão' : step === 2 ? 'Identificação' : step === 3 ? 'Endereço' : 'Pagamento'}
           </h2>
         </div>
         <button 
           className="btn-voltar-header" 
           onClick={() => step > 1 ? setStep(step - 1) : navigate(`/${slug}`)} 
-          style={lojistaObj?.capa_url ? { 
+          style={lojistaObj?.capaUrl ? { 
             background: 'rgba(255, 255, 255, 0.2)', 
             border: '1px solid rgba(255, 255, 255, 0.3)', 
             color: '#ffffff' 
@@ -589,23 +476,29 @@ export default function Checkout() {
                 <div style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <span style={{ display: 'block', fontWeight: 600 }}>Logado como</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{clienteLogado.whatsapp}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{clienteLogado.nome !== 'Sem Nome' ? clienteLogado.nome : (clienteLogado.whatsapp || clienteLogado.telefone)}</span>
                   </div>
-                  <button className="btn btn-ghost btn-sm" onClick={() => { setClienteLogado(null); setSenha(''); }}><FiLogOut /></button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setClienteLogado(null); }}><FiLogOut /></button>
                 </div>
               ) : (
                 <div className="form-grid">
                   <p style={{ gridColumn: '1/-1', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Digite seu WhatsApp para continuar.</p>
                   <div className="input-group">
                     <label>WhatsApp (DDD + Número)</label>
-                    <input className="input" placeholder="Ex: 11999999999" value={whatsapp} onChange={e => setWhatsapp(e.target.value.replace(/\D/g, ''))} />
+                    <input 
+                      className="input" 
+                      placeholder="Ex: 11999999999" 
+                      value={whatsapp} 
+                      onChange={e => setWhatsapp(e.target.value.replace(/\D/g, ''))} 
+                    />
                   </div>
-                  {isNovoCadastro && (
-                    <div className="input-group">
-                      <label>Confirme seu Nome</label>
-                      <input className="input" placeholder="Ex: João Silva" value={nome} onChange={e => setNome(e.target.value)} />
-                    </div>
-                  )}
+                  <div className="input-group">
+                    <label>
+                      Confirme seu Nome (Opcional se já cadastrado)
+                      {(whatsapp.length > 0 && !nome) && <span style={{ marginLeft: 8, fontSize: '0.8rem', color: 'var(--primary)' }}>Buscando no WhatsApp...</span>}
+                    </label>
+                    <input className="input" placeholder="Ex: João Silva" value={nome} onChange={e => setNome(e.target.value)} disabled={whatsapp.length > 0 && !nome && whatsapp.length < 10} />
+                  </div>
                   <button className="btn btn-primary btn-lg" onClick={handleLogin} disabled={enviando || whatsapp.length < 10} style={{ gridColumn: '1/-1', marginTop: 8 }}>
                     {enviando ? 'Verificando...' : 'Continuar'}
                   </button>
@@ -701,7 +594,6 @@ export default function Checkout() {
               <h3 className="section-title">Como quer pagar?</h3>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-                {/* PIX — só mostra se tiver dados bancários */}
                 {temPix && (
                   <label className={`card ${formaPagamento === 'PIX' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: formaPagamento === 'PIX' ? '2px solid var(--primary)' : '' }}>
                     <input type="radio" name="pagamento" checked={formaPagamento === 'PIX'} onChange={() => setFormaPagamento('PIX')} />
@@ -712,7 +604,6 @@ export default function Checkout() {
                   </label>
                 )}
                 
-                {/* Maquininha — texto muda conforme tipo */}
                 <label className={`card ${formaPagamento === 'MAQUININHA' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: formaPagamento === 'MAQUININHA' ? '2px solid var(--primary)' : '' }}>
                   <input type="radio" name="pagamento" checked={formaPagamento === 'MAQUININHA'} onChange={() => setFormaPagamento('MAQUININHA')} />
                   <div style={{ flex: 1 }}>
@@ -723,7 +614,6 @@ export default function Checkout() {
                   </div>
                 </label>
 
-                {/* Dinheiro — texto muda conforme tipo */}
                 <label className={`card ${formaPagamento === 'DINHEIRO' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: formaPagamento === 'DINHEIRO' ? '2px solid var(--primary)' : '' }}>
                   <input type="radio" name="pagamento" checked={formaPagamento === 'DINHEIRO'} onChange={() => setFormaPagamento('DINHEIRO')} />
                   <div style={{ flex: 1 }}>
@@ -735,7 +625,6 @@ export default function Checkout() {
                 </label>
               </div>
 
-              {/* Troco — só para dinheiro */}
               {formaPagamento === 'DINHEIRO' && (
                 <div className="input-group slide-up">
                   <label>Precisa de troco para quanto?</label>
@@ -758,6 +647,7 @@ export default function Checkout() {
           </div>
         )}
       </div>
+      
       {/* Bottom Nav Bar */}
       <div className="bottom-nav">
         <button className="bottom-nav-item" onClick={() => navigate(`/${slug}`)}>

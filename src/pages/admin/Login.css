@@ -53,7 +53,7 @@
 .input-icon {
   position: relative;
 }
-.input-icon svg {
+.input-icon > svg {
   position: absolute;
   left: 14px;
   top: 50%;

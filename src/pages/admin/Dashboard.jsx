@@ -43,7 +43,7 @@ export default function Dashboard() {
           <NavLink to="/admin/config" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setMenuOpen(false)}>
             <FiSettings /> Configurações
           </NavLink>
-          <NavLink to="/admin/financeiro" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setMenuOpen(false)} style={{ position: 'relative' }}>
+          <NavLink to="/admin/financeiro" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ position: 'relative' }} onClick={() => setMenuOpen(false)}>
             <FiDollarSign /> Financeiro
             {isBloqueado && (
               <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />

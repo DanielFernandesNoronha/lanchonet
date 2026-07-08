@@ -48,7 +48,7 @@ function App() {
             {/* Admin routes */}
             <Route path="/admin/login" element={<Login />} />
             <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
-              <Route index element={<ProtectedRoute><Pedidos /></ProtectedRoute>} />
+              <Route index element={<Navigate to="pedidos" replace />} />
               <Route path="produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
               <Route path="pedidos" element={<ProtectedRoute><Pedidos /></ProtectedRoute>} />
               <Route path="whatsapp" element={<ProtectedRoute><WhatsApp /></ProtectedRoute>} />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/apiClient';
 import { FiMail, FiLock, FiUser, FiLink, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import MenuLogo from '../../assets/MENU.svg';
@@ -35,13 +35,16 @@ export default function Login() {
   }, [location.state]);
 
   useEffect(() => {
-    supabase.from('planos').select('*').eq('ativo', true).order('valor_mensal', { ascending: true })
-      .then(({ data }) => {
+    async function loadPlanos() {
+      try {
+        const data = await api.get('/planos');
         if (data && data.length > 0) {
           setPlanos(data);
           setPlanoSelecionado(data[0].id);
         }
-      });
+      } catch (e) {}
+    }
+    loadPlanos();
   }, []);
 
   async function handleSubmit(e) {
@@ -126,7 +129,7 @@ export default function Login() {
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{plano.descricao}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <strong style={{ color: 'var(--accent)' }}>R$ {parseFloat(plano.valor_mensal).toFixed(2)}/mês</strong>
+                          <strong style={{ color: 'var(--accent)' }}>R$ {parseFloat(plano.valorMensal || plano.valor_mensal).toFixed(2)}/mês</strong>
                           {planoSelecionado === plano.id && <FiCheckCircle color="var(--accent)" />}
                         </div>
                       </div>
