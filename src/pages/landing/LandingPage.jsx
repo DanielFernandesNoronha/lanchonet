@@ -265,7 +265,7 @@ export default function LandingPage() {
               className="btn btn-primary btn-full btn-lg"
               onClick={() => navigate('/admin/login', { state: { mode: 'register' } })}
             >
-              Começar agora (30 dias grátis)
+              Começar agora
             </button>
           </div>
 
@@ -296,7 +296,7 @@ export default function LandingPage() {
         <p>Crie sua conta agora e comece a receber pedidos em minutos.</p>
         <div className="cta-final-btns">
           <button className="btn btn-primary btn-lg" onClick={() => navigate('/admin/login', { state: { mode: 'register' } })}>
-            Criar Loja Grátis <FiArrowRight />
+            Criar Loja <FiArrowRight />
           </button>
           <a href={WHATSAPP_SUPORTE} target="_blank" rel="noreferrer" className="btn btn-ghost btn-lg">
             Falar com Suporte
@@ -326,7 +326,7 @@ export default function LandingPage() {
             <h4>Suporte</h4>
             <a href={WHATSAPP_SUPORTE} target="_blank" rel="noreferrer">Falar no WhatsApp</a>
             <a href="/admin/login">Acessar Painel</a>
-            <a href="#pricing">Criar Conta Grátis</a>
+            <a href="#pricing">Criar Conta</a>
           </div>
         </div>
         <div className="footer-bottom">
