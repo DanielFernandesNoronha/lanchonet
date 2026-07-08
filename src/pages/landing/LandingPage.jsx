@@ -129,7 +129,7 @@ export default function LandingPage() {
           <div className="stat-card">
             <FiMessageCircle className="stat-icon" />
             <span className="stat-number">PIX</span>
-            <span className="stat-label">Confirmação automática</span>
+            <span className="stat-label">Seu pix no sistema sem taxa</span>
           </div>
         </div>
       </section>
@@ -193,7 +193,7 @@ export default function LandingPage() {
           <div className="feature-card">
             <div className="feature-icon"><FiDollarSign /></div>
             <h3>PIX Automático</h3>
-            <p>QR Code exclusivo por pedido gerado pelo nosso gateway de pagamento. O sistema reconhece e confirma o pagamento automaticamente — sem taxa por transação no seu plano.</p>
+            <p>O sistema gera o QR Code na tela para seu cliente pagar com PIX — sem taxa por transação no seu plano.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FiMonitor /></div>
