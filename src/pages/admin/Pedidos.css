@@ -743,9 +743,30 @@ button.ped-edit-item-name:hover { background: rgba(255,255,255,0.05); }
   @keyframes ped-fadeIn { from { opacity: 0; } to { opacity: 1; } }
   .ped-sidebar {
     width: 100vw;
+    max-width: 100vw;
+    border-radius: 20px 20px 0 0;
+    top: auto;
+    bottom: 0;
+    height: 90vh;
+    right: 0;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    animation: ped-slide-up 0.25s ease;
+  }
+  @keyframes ped-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
   }
   .ped-col-label { font-size: 0.72rem; }
   .ped-card-nome { font-size: 0.82rem; }
+
+  /* Sidebar header on mobile */
+  .ped-sidebar-header {
+    padding: 12px 16px;
+  }
+  .ped-sidebar-content {
+    padding: 16px;
+  }
 }
 
 @media (max-width: 500px) {
@@ -761,4 +782,20 @@ button.ped-edit-item-name:hover { background: rgba(255,255,255,0.05); }
     grid-template-columns: 1fr;
   }
   .ped-title { font-size: 1.2rem; }
+
+  /* Compact card on very small screens */
+  .ped-card {
+    padding: 10px 12px;
+  }
+  .ped-card-items {
+    font-size: 0.78rem;
+  }
+  .ped-card-footer {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ped-card-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
 }

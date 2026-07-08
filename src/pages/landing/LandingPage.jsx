@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCheck, FiSmartphone, FiMonitor, FiDollarSign, FiMessageCircle, FiArrowRight, FiShoppingBag, FiMenu, FiX, FiMessageSquare } from 'react-icons/fi';
+import { FiCheck, FiSmartphone, FiMonitor, FiDollarSign, FiMessageCircle, FiArrowRight, FiShoppingBag, FiMenu, FiX, FiMessageSquare, FiCreditCard } from 'react-icons/fi';
 import MenuLogo from '../../assets/MENU.svg';
 import './LandingPage.css';
 
@@ -193,7 +193,7 @@ export default function LandingPage() {
           <div className="feature-card">
             <div className="feature-icon"><FiDollarSign /></div>
             <h3>PIX Automático</h3>
-            <p>QR Code exclusivo por pedido gerado pelo nosso gateway de pagamento. O sistema reconhece e confirma o pagamento automaticamente — apenas R$ 0,80 fixos por transação.</p>
+            <p>QR Code exclusivo por pedido gerado pelo nosso gateway de pagamento. O sistema reconhece e confirma o pagamento automaticamente — sem taxa por transação no seu plano.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FiMonitor /></div>
@@ -205,6 +205,11 @@ export default function LandingPage() {
             <h3>Acompanhamento de Pedido</h3>
             <p>O cliente acompanha o status do pedido pelo link da loja e tem acesso rápido ao WhatsApp do estabelecimento.</p>
           </div>
+          <div className="feature-card">
+            <div className="feature-icon"><FiCreditCard /></div>
+            <h3>PIX ou Cartão na Assinatura</h3>
+            <p>Assine com o cartão de crédito e seja cobrado automaticamente todo mês — sem precisar pagar manualmente. Também aceitamos PIX para quem preferir.</p>
+          </div>
         </div>
       </section>
 
@@ -213,7 +218,7 @@ export default function LandingPage() {
         <div className="preview-label">Planos</div>
         <h2 className="section-title">Preço justo, sem surpresas</h2>
         <p className="section-subtitle">
-          Pague uma mensalidade fixa à LanchoNet. Sem comissão por pedido para nós — a única taxa que incide é de apenas R$ 0,80 fixos por transação no processamento do PIX.
+          Pague uma mensalidade fixa à LanchoNet. Sem comissão por pedido — a assinatura pode ser feita via cartão de crédito (débito automático mensal) ou PIX.
         </p>
 
         <div className="pricing-grid">
