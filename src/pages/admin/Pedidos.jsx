@@ -269,10 +269,21 @@ export default function Pedidos() {
       });
       toast.success('Pedido atualizado!');
       setIsEditing(false);
+      
+      const novoPedido = {
+        ...pedidoSelecionado,
+        status: editData.status,
+        total: totalFinal,
+        subtotal: sub,
+        taxaEntrega: taxaFinal,
+        clienteDados: dadosAtualizados,
+        itens: editData.itens
+      };
+      setPedidoSelecionado(novoPedido);
+      setPedidos(prev => prev.map(p => p.id === pedidoSelecionado.id ? novoPedido : p));
     } catch(e) {
       toast.error('Erro ao salvar');
     }
-    setPedidoSelecionado(prev => ({ ...prev, status: editData.status, total: totalFinal, subtotal: sub, taxa_entrega: taxaFinal, cliente_dados: dadosAtualizados, itens: editData.itens }));
   }
 
   function updateEditItem(i, key, val) {

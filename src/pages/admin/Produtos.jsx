@@ -70,12 +70,13 @@ export default function Produtos() {
       if (editando) {
         await api.put(`/produtos/${editando.id}`, payload);
         toast.success('Produto atualizado!');
+        setProdutos(prev => prev.map(p => p.id === editando.id ? { ...p, ...payload } : p));
       } else {
-        await api.post('/produtos', payload);
+        const novoProduto = await api.post('/produtos', payload);
         toast.success('Produto criado!');
+        setProdutos(prev => [...prev, novoProduto]);
       }
       setShowModal(false);
-      loadData();
     } catch(e) {
       toast.error('Erro ao salvar');
     }
@@ -101,7 +102,7 @@ export default function Produtos() {
       });
       await api.put(`/produtos/${produtoId}`, { imagemUrl: fileUrl });
       toast.success('Imagem atualizada!');
-      loadData();
+      setProdutos(prev => prev.map(p => p.id === produtoId ? { ...p, imagemUrl: fileUrl } : p));
     } catch(e) {
       toast.error('Erro no upload');
     } finally {
@@ -120,19 +121,22 @@ export default function Produtos() {
     try {
       await api.delete(`/produtos/${idToDelete}`);
       toast.success('Produto removido com sucesso!');
+      setProdutos(prev => prev.filter(p => p.id !== idToDelete));
       setIdToDelete(null);
-      loadData();
     } catch(e) {
       toast.error('Erro ao excluir');
     }
   }
 
   async function toggleDisponivel(produto) {
+    // Optimistic update
+    setProdutos(prev => prev.map(p => p.id === produto.id ? { ...p, disponivel: !produto.disponivel } : p));
     try {
       await api.put(`/produtos/${produto.id}`, { disponivel: !produto.disponivel });
-      loadData();
     } catch(e) {
       toast.error('Erro ao alterar disponibilidade');
+      // Rollback on error
+      setProdutos(prev => prev.map(p => p.id === produto.id ? { ...p, disponivel: produto.disponivel } : p));
     }
   }
 

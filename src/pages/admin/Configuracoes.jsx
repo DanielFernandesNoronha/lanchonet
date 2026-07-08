@@ -205,10 +205,10 @@ export default function Configuracoes() {
   async function addTaxa() {
     if (!novaTaxa.bairro || !novaTaxa.valor) return toast.error('Preencha bairro e valor');
     try {
-      await api.post('/lojistas/taxas', { bairro: novaTaxa.bairro, valor: parseFloat(novaTaxa.valor) });
+      const res = await api.post('/lojistas/taxas', { bairro: novaTaxa.bairro, valor: parseFloat(novaTaxa.valor) });
       toast.success('Taxa adicionada!');
       setNovaTaxa({ bairro: '', valor: '' });
-      loadTaxas();
+      setTaxas(prev => [...prev, res.data || res]);
     } catch(e) {
       toast.error('Erro ao adicionar taxa');
     }
@@ -218,7 +218,7 @@ export default function Configuracoes() {
     try {
       await api.delete(`/lojistas/taxas/${id}`);
       toast.success('Removida');
-      loadTaxas();
+      setTaxas(prev => prev.filter(t => t.id !== id));
     } catch(e) {
       toast.error('Erro ao remover taxa');
     }
@@ -228,10 +228,10 @@ export default function Configuracoes() {
     if (!novaCat) return;
     const ordem = categorias.length + 1;
     try {
-      await api.post('/categorias', { nome: novaCat, ordem });
+      const res = await api.post('/categorias', { nome: novaCat, ordem });
       toast.success('Categoria criada!');
       setNovaCat('');
-      loadCategorias();
+      setCategorias(prev => [...prev, res.data || res]);
     } catch(e) {
       toast.error('Erro ao criar categoria');
     }
@@ -241,7 +241,7 @@ export default function Configuracoes() {
     try {
       await api.delete(`/categorias/${id}`);
       toast.success('Removida');
-      loadCategorias();
+      setCategorias(prev => prev.filter(c => c.id !== id));
     } catch(e) {
       toast.error('Erro ao remover categoria');
     }
@@ -250,13 +250,13 @@ export default function Configuracoes() {
   async function addAdicional() {
     if (!novoAdicional.nome) return toast.error('Preencha o nome do adicional');
     try {
-      await api.post('/lojistas/adicionais', {
+      const res = await api.post('/lojistas/adicionais', {
         nome: novoAdicional.nome,
         preco: parseFloat(novoAdicional.preco) || 0
       });
       toast.success('Adicional criado!');
       setNovoAdicional({ nome: '', preco: '' });
-      loadAdicionais();
+      setAdicionais(prev => [...prev, res.data || res]);
     } catch(e) {
       toast.error('Erro ao salvar adicional');
     }
@@ -266,7 +266,7 @@ export default function Configuracoes() {
     try {
       await api.delete(`/lojistas/adicionais/${id}`);
       toast.success('Removido');
-      loadAdicionais();
+      setAdicionais(prev => prev.filter(a => a.id !== id));
     } catch(e) {
       toast.error('Erro ao remover adicional');
     }
