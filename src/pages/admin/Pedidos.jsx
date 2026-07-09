@@ -10,7 +10,7 @@ const STATUS_LABELS = { novo: 'Novo', preparando: 'Preparando', entrega: 'Entreg
 const STATUS_ICONS = { novo: <FiStar />, preparando: <FiCoffee />, entrega: <FiTruck />, concluido: <FiCheckCircle /> };
 
 export default function Pedidos() {
-  const { lojista } = useAuth();
+  const { lojista, fetchLojista } = useAuth();
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
@@ -79,9 +79,8 @@ export default function Pedidos() {
   const toggleLoja = async () => {
     try {
       await api.patch('/lojistas/config', { aberto: !lojista?.aberto });
-      if (typeof window.fetchLojista === 'function') window.fetchLojista(); // Falha graciosa se não der certo
+      await fetchLojista(); // Atualiza o contexto na hora, sem precisar recarregar a página
       toast.success(lojista?.aberto ? 'Loja fechada!' : 'Loja aberta!');
-      setTimeout(() => window.location.reload(), 1000);
     } catch(e) {
       toast.error('Erro ao mudar status da loja');
     }
@@ -90,9 +89,8 @@ export default function Pedidos() {
   const toggleTimers = async () => {
     try {
       await api.patch('/lojistas/config', { pausarTimers: !lojista?.pausarTimers });
-      if (typeof window.fetchLojista === 'function') window.fetchLojista();
+      await fetchLojista();
       toast.success(lojista?.pausarTimers ? 'Timers ativados!' : 'Timers pausados!');
-      setTimeout(() => window.location.reload(), 1000);
     } catch(e) {
       toast.error('Erro ao mudar timers');
     }
@@ -104,7 +102,7 @@ export default function Pedidos() {
     const field = `tempo${status.charAt(0).toUpperCase() + status.slice(1)}`;
     try {
       await api.patch('/lojistas/config', { [field]: min });
-      if (typeof window.fetchLojista === 'function') window.fetchLojista();
+      await fetchLojista();
       toast.success('Tempo atualizado!');
     } catch(e) {
       toast.error('Erro ao salvar tempo');
@@ -162,9 +160,54 @@ export default function Pedidos() {
 
     return () => eventSource.close();
   }, [lojista]);
-  // --- Auto-Advance logic removed. Now handled entirely by Backend Cron ---
   const advancingIds = useRef(new Set());
   const deletingIds = useRef(new Set());
+
+  // --- Relógio "vivo" para os timers ---
+  // Antes, o % da barra e o texto do countdown eram calculados com Date.now()
+  // direto no corpo do JSX. Sem nenhum estado mudando, o componente nunca
+  // re-renderizava sozinho, então o timer ficava "parado" até chegar um
+  // evento de SSE. Este estado "now" é atualizado a cada segundo e usado
+  // no lugar de Date.now(), o que faz a barra e o countdown andarem em
+  // tempo real sem precisar de F5 nem de nenhum evento externo.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // --- Auto-avanço quando o timer zera ---
+  // O backend tem um cron para isso, mas ele pode falhar/atrasar, e o
+  // usuário quer que a etapa avance assim que o tempo bate zero, sem
+  // depender de F5. Esse efeito roda a cada "tick" (1s) e cada vez que a
+  // lista de pedidos ou a config da loja mudam, verifica quais pedidos
+  // estouraram o tempo da coluna atual e chama avancarStatus para eles.
+  // O ref "advancingIds" (já existente) evita chamadas duplicadas.
+  useEffect(() => {
+    if (!lojista || lojista.pausarTimers) return;
+
+    pedidos.forEach(pedido => {
+      const status = pedido.status;
+      const limit = status === 'novo' ? (lojista.tempoNovo ?? 5)
+        : status === 'preparando' ? (lojista.tempoPreparando ?? 30)
+        : status === 'entrega' ? (lojista.tempoEntrega ?? 40)
+        : (lojista.tempoConcluido ?? 10);
+
+      const startTime = new Date(pedido.statusUpdatedAt || pedido.createdAt).getTime();
+      const elapsedMins = (now - startTime) / 60000;
+      if (elapsedMins < limit) return;
+
+      if (status === 'concluido') {
+        // Coluna "Concluído" não tem próxima etapa: quando o tempo zera,
+        // o pedido some do quadro sozinho (função já existia, mas nunca
+        // era chamada por ninguém).
+        excluirPedidoSilencioso(pedido.id);
+      } else if (!advancingIds.current.has(pedido.id)) {
+        avancarStatus(pedido);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, lojista, pedidos]);
 
   async function excluirPedidoSilencioso(id) {
     if (deletingIds.current.has(id)) return;
@@ -367,9 +410,9 @@ export default function Pedidos() {
           </button>
           <button
             onClick={toggleTimers}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: lojista?.pausar_timers ? 'var(--red-glow)' : 'var(--blue-glow)', color: lojista?.pausar_timers ? 'var(--red)' : 'var(--blue)', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: lojista?.pausarTimers ? 'var(--red-glow)' : 'var(--blue-glow)', color: lojista?.pausarTimers ? 'var(--red)' : 'var(--blue)', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
           >
-            <FiClock /> {lojista?.pausar_timers ? 'Timers Pausados' : 'Timers Ativos'}
+            <FiClock /> {lojista?.pausarTimers ? 'Timers Pausados' : 'Timers Ativos'}
           </button>
           <button
             onClick={toggleLoja}
@@ -432,12 +475,12 @@ export default function Pedidos() {
                         {(() => {
                           const limit = status === 'novo' ? (lojista?.tempoNovo ?? 5) : status === 'preparando' ? (lojista?.tempoPreparando ?? 30) : status === 'entrega' ? (lojista?.tempoEntrega ?? 40) : (lojista?.tempoConcluido ?? 10);
                           const startTime = new Date(pedido.statusUpdatedAt || pedido.createdAt).getTime();
-                          const elapsedMins = (Date.now() - startTime) / 60000;
+                          const elapsedMins = (now - startTime) / 60000;
                           const pct = Math.min((elapsedMins / limit) * 100, 100);
                           const isDanger = pct > 80;
                           return (
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'var(--border)' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', background: lojista?.pausar_timers ? 'var(--text-muted)' : (isDanger ? 'var(--red)' : 'var(--primary)'), transition: 'width 1s linear' }} />
+                              <div style={{ width: `${pct}%`, height: '100%', background: lojista?.pausarTimers ? 'var(--text-muted)' : (isDanger ? 'var(--red)' : 'var(--primary)'), transition: 'width 1s linear' }} />
                             </div>
                           );
                         })()}
@@ -449,12 +492,12 @@ export default function Pedidos() {
                           {(() => {
                             const limit = status === 'novo' ? (lojista?.tempoNovo ?? 5) : status === 'preparando' ? (lojista?.tempoPreparando ?? 30) : status === 'entrega' ? (lojista?.tempoEntrega ?? 40) : (lojista?.tempoConcluido ?? 10);
                             const startTime = new Date(pedido.statusUpdatedAt || pedido.createdAt).getTime();
-                            const elapsedMins = (Date.now() - startTime) / 60000;
+                            const elapsedMins = (now - startTime) / 60000;
                             const pct = Math.min((elapsedMins / limit) * 100, 100);
                             const remainingMins = Math.max(0, limit - elapsedMins);
                             const isDanger = pct > 80;
 
-                            if (lojista?.pausar_timers) {
+                            if (lojista?.pausarTimers) {
                               return <span className="ped-card-time" style={{ background: 'var(--border)', padding: '2px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, opacity: 0.6 }}><FiClock size={11}/> Pausado</span>;
                             }
                             return (

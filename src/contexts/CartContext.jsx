@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback } from 'react';
 
 const CartContext = createContext({});
 
@@ -6,45 +6,52 @@ export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
 
   // Cada adição agora gera um item único no carrinho, pois o mesmo produto pode ter adicionais/observações diferentes.
-  function addItem(produto, observacao = '', adicionaisSelecionados = []) {
+  const addItem = useCallback((produto, observacao = '', adicionaisSelecionados = []) => {
     setItems(prev => {
       // Calcular preço total unitário (Preço Base + Soma dos Adicionais)
       const precoAdicionais = adicionaisSelecionados.reduce((s, ad) => s + parseFloat(ad.preco), 0);
       const precoFinal = parseFloat(produto.preco) + precoAdicionais;
 
-      return [...prev, { 
-        ...produto, 
-        cartItemId: Date.now().toString() + Math.random().toString(), 
-        quantidade: 1, 
-        observacao, 
+      return [...prev, {
+        ...produto,
+        cartItemId: Date.now().toString() + Math.random().toString(),
+        quantidade: 1,
+        observacao,
         adicionais: adicionaisSelecionados,
         precoOriginal: produto.preco,
         precoCalculado: precoFinal
       }];
     });
-  }
+  }, []);
 
-  function removeItem(cartItemId) {
+  const removeItem = useCallback((cartItemId) => {
     setItems(prev => prev.filter(i => i.cartItemId !== cartItemId));
-  }
+  }, []);
 
-  function updateQuantidade(cartItemId, quantidade) {
-    if (quantidade <= 0) return removeItem(cartItemId);
+  const updateQuantidade = useCallback((cartItemId, quantidade) => {
+    if (quantidade <= 0) {
+      setItems(prev => prev.filter(i => i.cartItemId !== cartItemId));
+      return;
+    }
     setItems(prev => prev.map(i => i.cartItemId === cartItemId ? { ...i, quantidade } : i));
-  }
+  }, []);
 
-  function updateObservacao(cartItemId, observacao) {
+  const updateObservacao = useCallback((cartItemId, observacao) => {
     setItems(prev => prev.map(i => i.cartItemId === cartItemId ? { ...i, observacao } : i));
-  }
+  }, []);
 
-  function clearCart() { setItems([]); }
+  const clearCart = useCallback(() => setItems([]), []);
 
   // Total agora usa o precoCalculado
-  const total = items.reduce((s, i) => s + i.precoCalculado * i.quantidade, 0);
-  const totalItems = items.reduce((s, i) => s + i.quantidade, 0);
+  const total = useMemo(() => items.reduce((s, i) => s + i.precoCalculado * i.quantidade, 0), [items]);
+  const totalItems = useMemo(() => items.reduce((s, i) => s + i.quantidade, 0), [items]);
+
+  const value = useMemo(() => ({
+    items, addItem, removeItem, updateQuantidade, updateObservacao, clearCart, total, totalItems
+  }), [items, addItem, removeItem, updateQuantidade, updateObservacao, clearCart, total, totalItems]);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantidade, updateObservacao, clearCart, total, totalItems }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
